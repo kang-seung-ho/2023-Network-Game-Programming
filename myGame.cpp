@@ -19,7 +19,7 @@ private:
     int overHeating = 0;
 
 public:
-    
+
 
     HWND hwnd;
     Character(int x, int y, HWND hwnd) : x(x), y(y), hwnd(hwnd) {}
@@ -33,15 +33,15 @@ public:
         y += dy;
     }
 
-	void item_SPEED_UP() {
-		speed = 5;
-	}
+    void item_SPEED_UP() {
+        speed = 5;
+    }
 
-	void revert_SPEED() { //시간 지난 뒤 다시 원래 속도로 복원
-		speed = 3;
-	}
+    void revert_SPEED() { //시간 지난 뒤 다시 원래 속도로 복원
+        speed = 3;
+    }
 
-    void item_Power_UP() { 
+    void item_Power_UP() {
         power = 15;
     }
 
@@ -139,39 +139,39 @@ public:
 
 class PowerUp {
 private:
-	int x, y;
-	HBITMAP hBitmap;
+    int x, y;
+    HBITMAP hBitmap;
 
 public:
     PowerUp(int x, int y, LPCWSTR imagePath) : x(x), y(y)
-	{
-		hBitmap = (HBITMAP)LoadImage(NULL, imagePath, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-		if (hBitmap == NULL) {
-			MessageBox(NULL, L"Failed to load image", L"Error", MB_OK);
-		}
-	}
+    {
+        hBitmap = (HBITMAP)LoadImage(NULL, imagePath, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+        if (hBitmap == NULL) {
+            MessageBox(NULL, L"Failed to load image", L"Error", MB_OK);
+        }
+    }
 
-	~PowerUp() {
-		DeleteObject(hBitmap);  // 이미지 리소스 해제
-	}
+    ~PowerUp() {
+        DeleteObject(hBitmap);  // 이미지 리소스 해제
+    }
 
-	void Draw(HDC hdc) {
-		HDC memDC = CreateCompatibleDC(hdc);
-		HBITMAP oldBitmap = (HBITMAP)SelectObject(memDC, hBitmap);
+    void Draw(HDC hdc) {
+        HDC memDC = CreateCompatibleDC(hdc);
+        HBITMAP oldBitmap = (HBITMAP)SelectObject(memDC, hBitmap);
 
-		BitBlt(hdc, x, y, 20, 20, memDC, 0, 0, SRCCOPY);
+        BitBlt(hdc, x, y, 20, 20, memDC, 0, 0, SRCCOPY);
 
-		SelectObject(memDC, oldBitmap);
-		DeleteDC(memDC);
-	}
+        SelectObject(memDC, oldBitmap);
+        DeleteDC(memDC);
+    }
 
-	void SetPosition(int x, int y) {
-		this->x = x;
-		this->y = y;
-	}
+    void SetPosition(int x, int y) {
+        this->x = x;
+        this->y = y;
+    }
 
-	int GetX() const { return x; }
-	int GetY() const { return y; }
+    int GetX() const { return x; }
+    int GetY() const { return y; }
 
 };
 
@@ -332,7 +332,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR pCmdLine, int nCmdShow)
 
     // 벽 객체 초기화 위치 (랜덤)
     for (int i = 0; i < 5; ++i) {
-        walls[i] = new Wall(0, 0, L"wall.bmp"); // 초기 위치는 임의로 0,0으로 설정
+        walls[i] = new Wall(0, 0, L"resources/wall.bmp"); // 초기 위치는 임의로 0,0으로 설정
         SetRandomPositionForWall(walls[i]);     // 여기서 위치를 랜덤하게 설정
     }
 
@@ -409,7 +409,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         std::chrono::duration<double> elapsed = now - lastIceTime;
 
         if (elapsed.count() >= 13.0) {  // 13초가 지났는지 확인
-            Ice* newIce = new Ice(0, 0, L"ice.bmp");  // 초기 위치는 임의로 0,0으로 설정
+            Ice* newIce = new Ice(0, 0, L"resources/ice.bmp");  // 초기 위치는 임의로 0,0으로 설정
             SetRandomPositionForIce(newIce);  // Ice 위치 설정
             ices.push_back(newIce);  // vector에 새로운 ice 추가
             lastIceTime = now;
@@ -419,7 +419,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         std::chrono::duration<double> elapsedCoin = nowCoin - lastCoinTime;
 
         if (elapsedCoin.count() >= 5.0) {  // 5초가 지났는지 확인
-            Coin* newCoin = new Coin(0, 0, L"coin.bmp");  // 초기 위치는 임의로 0,0으로 설정
+            Coin* newCoin = new Coin(0, 0, L"resources/coin.bmp");  // 초기 위치는 임의로 0,0으로 설정
             SetRandomPositionForCoin(newCoin);  // Coin 위치 설정
             coins.push_back(newCoin);  // vector에 새로운 coin 추가
             lastCoinTime = nowCoin;
