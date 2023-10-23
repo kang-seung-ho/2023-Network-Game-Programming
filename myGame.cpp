@@ -77,31 +77,31 @@ public:
         itemType = uid3(dre); // 랜덤 아이템
 
         if (itemType == POWERUP) {
-            hBitmap = (HBITMAP)LoadImage(NULL, L"power.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+            hBitmap = (HBITMAP)LoadImage(NULL, L"resources/power.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
             if (hBitmap == NULL) {
                 MessageBox(NULL, L"Failed to load image", L"Error", MB_OK);
             }
         }
         else if (itemType == SPEEDUP) {
-            hBitmap = (HBITMAP)LoadImage(NULL, L"speed.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+            hBitmap = (HBITMAP)LoadImage(NULL, L"resources/speed.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
             if (hBitmap == NULL) {
                 MessageBox(NULL, L"Failed to load image", L"Error", MB_OK);
             }
         }
         else if (itemType == HEAL) {
-            hBitmap = (HBITMAP)LoadImage(NULL, L"heal.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+            hBitmap = (HBITMAP)LoadImage(NULL, L"resources/heal.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
             if (hBitmap == NULL) {
                 MessageBox(NULL, L"Failed to load image", L"Error", MB_OK);
             }
         }
         else if (itemType == ICE) {
-            hBitmap = (HBITMAP)LoadImage(NULL, L"ice.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+            hBitmap = (HBITMAP)LoadImage(NULL, L"resources/ice.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
             if (hBitmap == NULL) {
                 MessageBox(NULL, L"Failed to load image", L"Error", MB_OK);
             }
         }
         else if (itemType == COIN) {
-            hBitmap = (HBITMAP)LoadImage(NULL, L"coin.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+            hBitmap = (HBITMAP)LoadImage(NULL, L"resources/coin.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
             if (hBitmap == NULL) {
                 MessageBox(NULL, L"Failed to load image", L"Error", MB_OK);
             }
@@ -263,7 +263,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR pCmdLine, int nCmdShow)
 
     // 벽 객체 초기화 위치 (랜덤)
     for (int i = 0; i < 5; ++i) {
-        walls[i] = new Wall(0, 0, L"wall.bmp"); // 초기 위치는 임의로 0,0으로 설정
+        walls[i] = new Wall(0, 0, L"resources/wall.bmp"); // 초기 위치는 임의로 0,0으로 설정
         SetRandomPositionForWall(walls[i]);     // 여기서 위치를 랜덤하게 설정
     }
 
@@ -336,12 +336,12 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 
         if (elapsed.count() >= 5.0) {  // 5초가 지났는지 확인
             Item* newItem = new Item(0, 0);  // 초기 위치는 임의로 0,0으로 설정
-            SetRandomPositionForIce(newItem);  // Ice 위치 설정
+            SetRandomPositionForIce(newItem);  // 위치 설정
             items.push_back(newItem);  // vector에 새로운 아이템 추가
             lastCreateTime = now;
         }
 
-        //CheckCollisions();  // ice와 player 간의 충돌 확인
+        //CheckCollisions();  // 아이템과 player 간의 충돌 확인
 
         InvalidateRect(hwnd, nullptr, TRUE);  // 화면 갱신
     } break;
