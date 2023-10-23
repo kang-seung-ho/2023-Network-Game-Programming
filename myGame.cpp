@@ -1,3 +1,9 @@
+#define POWERUP 1
+#define SPEEDUP 2
+#define HEAL 3
+#define ICE 4
+#define COIN 5
+
 #include <windows.h>
 #include <random>
 #include <chrono>
@@ -5,6 +11,7 @@ using namespace std;
 
 uniform_int_distribution uid1{ 50, 700 }; //가로
 uniform_int_distribution uid2{ 50, 500 }; //세로
+uniform_int_distribution uid3{ 1,5 }; //아이템
 default_random_engine dre{ random_device{}() };
 
 // Character 클래스 선언
@@ -20,7 +27,6 @@ private:
 
 public:
 
-
     HWND hwnd;
     Character(int x, int y, HWND hwnd) : x(x), y(y), hwnd(hwnd) {}
 
@@ -33,25 +39,23 @@ public:
         y += dy;
     }
 
-    void item_SPEED_UP() {
+    void SpeedUp() {
         speed = 5;
     }
 
-    void revert_SPEED() { //시간 지난 뒤 다시 원래 속도로 복원
+    void Speed() { //시간 지난 뒤 다시 원래 속도로 복원
         speed = 3;
     }
 
-    void item_Power_UP() {
+    void PowerUp() {
         power = 15;
     }
 
-    void revert_Power() { //시간 지난 뒤 다시 원래 속도로 복원
+    void Power() { //시간 지난 뒤 다시 원래 속도로 복원
         power = 10;
     }
 
-
-
-    void hp_UP() {
+    void HealingHp() {
         if (hp + 30 >= 100) {
             hp = 100;
         }
@@ -59,6 +63,73 @@ public:
             hp += 30;
         }
     }
+};
+
+class Item {
+private:
+    int x, y;
+    int itemType;
+    HBITMAP hBitmap;
+
+public:
+    Item(int x, int y) : x(x), y(y)
+    {
+        itemType = uid3(dre); // 랜덤 아이템
+
+        if (itemType == POWERUP) {
+            hBitmap = (HBITMAP)LoadImage(NULL, L"power.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+            if (hBitmap == NULL) {
+                MessageBox(NULL, L"Failed to load image", L"Error", MB_OK);
+            }
+        }
+        else if (itemType == SPEEDUP) {
+            hBitmap = (HBITMAP)LoadImage(NULL, L"speed.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+            if (hBitmap == NULL) {
+                MessageBox(NULL, L"Failed to load image", L"Error", MB_OK);
+            }
+        }
+        else if (itemType == HEAL) {
+            hBitmap = (HBITMAP)LoadImage(NULL, L"heal.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+            if (hBitmap == NULL) {
+                MessageBox(NULL, L"Failed to load image", L"Error", MB_OK);
+            }
+        }
+        else if (itemType == ICE) {
+            hBitmap = (HBITMAP)LoadImage(NULL, L"ice.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+            if (hBitmap == NULL) {
+                MessageBox(NULL, L"Failed to load image", L"Error", MB_OK);
+            }
+        }
+        else if (itemType == COIN) {
+            hBitmap = (HBITMAP)LoadImage(NULL, L"coin.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+            if (hBitmap == NULL) {
+                MessageBox(NULL, L"Failed to load image", L"Error", MB_OK);
+            }
+        }
+    }
+
+    ~Item() {
+        DeleteObject(hBitmap);
+    }
+
+    void Draw(HDC hdc) {
+        HDC memDC = CreateCompatibleDC(hdc);
+        HBITMAP oldBitmap = (HBITMAP)SelectObject(memDC, hBitmap);
+
+        BitBlt(hdc, x, y, 20, 20, memDC, 0, 0, SRCCOPY);
+
+        SelectObject(memDC, oldBitmap);
+        DeleteDC(memDC);
+    }
+
+    void SetPosition(int x, int y) {
+        this->x = x;
+        this->y = y;
+    }
+
+    int GetX() const { return x; }
+    int GetY() const { return y; }
+
 };
 
 class Wall {
@@ -99,155 +170,12 @@ public:
 
 };
 
-class Ice {
-private:
-    int x, y;
-    HBITMAP hBitmap;
-
-public:
-    Ice(int x, int y, LPCWSTR imagePath) : x(x), y(y)
-    {
-        hBitmap = (HBITMAP)LoadImage(NULL, imagePath, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-        if (hBitmap == NULL) {
-            MessageBox(NULL, L"Failed to load image", L"Error", MB_OK);
-        }
-    }
-
-    ~Ice() {
-        DeleteObject(hBitmap);
-    }
-
-    void Draw(HDC hdc) {
-        HDC memDC = CreateCompatibleDC(hdc);
-        HBITMAP oldBitmap = (HBITMAP)SelectObject(memDC, hBitmap);
-
-        BitBlt(hdc, x, y, 20, 20, memDC, 0, 0, SRCCOPY);
-
-        SelectObject(memDC, oldBitmap);
-        DeleteDC(memDC);
-    }
-
-    void SetPosition(int x, int y) {
-        this->x = x;
-        this->y = y;
-    }
-
-    int GetX() const { return x; }
-    int GetY() const { return y; }
-
-};
-
-class PowerUp {
-private:
-    int x, y;
-    HBITMAP hBitmap;
-
-public:
-    PowerUp(int x, int y, LPCWSTR imagePath) : x(x), y(y)
-    {
-        hBitmap = (HBITMAP)LoadImage(NULL, imagePath, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-        if (hBitmap == NULL) {
-            MessageBox(NULL, L"Failed to load image", L"Error", MB_OK);
-        }
-    }
-
-    ~PowerUp() {
-        DeleteObject(hBitmap);  // 이미지 리소스 해제
-    }
-
-    void Draw(HDC hdc) {
-        HDC memDC = CreateCompatibleDC(hdc);
-        HBITMAP oldBitmap = (HBITMAP)SelectObject(memDC, hBitmap);
-
-        BitBlt(hdc, x, y, 20, 20, memDC, 0, 0, SRCCOPY);
-
-        SelectObject(memDC, oldBitmap);
-        DeleteDC(memDC);
-    }
-
-    void SetPosition(int x, int y) {
-        this->x = x;
-        this->y = y;
-    }
-
-    int GetX() const { return x; }
-    int GetY() const { return y; }
-
-};
-
-
-class Coin {
-private:
-    int x, y;
-    HBITMAP hBitmap;
-
-public:
-    Coin(int x, int y, LPCWSTR imagePath) : x(x), y(y)
-    {
-        hBitmap = (HBITMAP)LoadImage(NULL, imagePath, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-        if (hBitmap == NULL) {
-            MessageBox(NULL, L"Failed to load image", L"Error", MB_OK);
-        }
-    }
-
-    ~Coin() {
-        DeleteObject(hBitmap);  // 이미지 리소스 해제
-    }
-
-    void Draw(HDC hdc) {
-        HDC memDC = CreateCompatibleDC(hdc);
-        HBITMAP oldBitmap = (HBITMAP)SelectObject(memDC, hBitmap);
-
-        BitBlt(hdc, x, y, 20, 20, memDC, 0, 0, SRCCOPY);
-
-        SelectObject(memDC, oldBitmap);
-        DeleteDC(memDC);
-    }
-
-    void SetPosition(int x, int y) {
-        this->x = x;
-        this->y = y;
-    }
-
-    int GetX() const { return x; }
-    int GetY() const { return y; }
-
-};
 
 Character* player = NULL;  // 전역 포인터로 선언
 Wall* walls[5] = { NULL, NULL, NULL, NULL, NULL };
 
-vector<Ice*> ices;
-auto lastIceTime = std::chrono::high_resolution_clock::now();  // 마지막 Ice 생성 시간 초기화
-
-vector<Coin*> coins;
-auto lastCoinTime = std::chrono::high_resolution_clock::now();  // 마지막 Coin 생성 시간 초기화
-
-bool IsColliding(int x1, int y1, int x2, int y2, int size) {
-    return (x1 < x2 + size && x1 + size > x2 && y1 < y2 + size && y1 + size > y2);
-}
-
-
-void SetRandomPositionForCoin(Coin* coin) {
-    bool collides = false;
-    do {
-        collides = false;
-        int randX = uid1(dre);
-        int randY = uid2(dre);
-
-        // 기존 벽들과 충돌하는지 확인
-        for (int i = 0; i < 5; ++i) {
-            if (walls[i] && IsColliding(randX, randY, walls[i]->GetX(), walls[i]->GetY(), 30)) {
-                collides = true;
-                break;
-            }
-        }
-        if (!collides) {
-            coin->SetPosition(randX, randY);
-        }
-    } while (collides);
-}
-
+vector<Item*> items;
+auto lastCreateTime = std::chrono::high_resolution_clock::now();  // 마지막 Ice 생성 시간 초기화
 
 //void CheckCollisions() {
 //    for (auto it = ices.begin(); it != ices.end();) {
@@ -261,8 +189,11 @@ void SetRandomPositionForCoin(Coin* coin) {
 //    }
 //}
 
+bool IsColliding(int x1, int y1, int x2, int y2, int size) {
+    return (x1 < x2 + size && x1 + size > x2 && y1 < y2 + size && y1 + size > y2);
+}
 
-void SetRandomPositionForIce(Ice* ice) {
+void SetRandomPositionForIce(Item* item) {
     bool collides = false;
     do {
         collides = false;
@@ -277,7 +208,7 @@ void SetRandomPositionForIce(Ice* ice) {
             }
         }
         if (!collides) {
-            ice->SetPosition(randX, randY);
+            item->SetPosition(randX, randY);
         }
     } while (collides);
 }
@@ -332,7 +263,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR pCmdLine, int nCmdShow)
 
     // 벽 객체 초기화 위치 (랜덤)
     for (int i = 0; i < 5; ++i) {
-        walls[i] = new Wall(0, 0, L"resources/wall.bmp"); // 초기 위치는 임의로 0,0으로 설정
+        walls[i] = new Wall(0, 0, L"wall.bmp"); // 초기 위치는 임의로 0,0으로 설정
         SetRandomPositionForWall(walls[i]);     // 여기서 위치를 랜덤하게 설정
     }
 
@@ -370,14 +301,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             walls[i]->Draw(memDC);
         }
 
-        for (auto iceInstance : ices) {
-            iceInstance->Draw(memDC);  // 모든 ice 객체를 그림
+        for (auto item : items) {
+            item->Draw(memDC);  // 모든 item 객체를 그림
         }
-
-        for (auto coinInstance : coins) {
-            coinInstance->Draw(memDC);  // 모든 coin 객체를 그림
-        }
-
 
         player->Draw(memDC);  // 메모리 DC에 그림을 그리기
 
@@ -406,25 +332,14 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         }
 
         auto now = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> elapsed = now - lastIceTime;
+        std::chrono::duration<double> elapsed = now - lastCreateTime;
 
-        if (elapsed.count() >= 13.0) {  // 13초가 지났는지 확인
-            Ice* newIce = new Ice(0, 0, L"resources/ice.bmp");  // 초기 위치는 임의로 0,0으로 설정
-            SetRandomPositionForIce(newIce);  // Ice 위치 설정
-            ices.push_back(newIce);  // vector에 새로운 ice 추가
-            lastIceTime = now;
+        if (elapsed.count() >= 5.0) {  // 5초가 지났는지 확인
+            Item* newItem = new Item(0, 0);  // 초기 위치는 임의로 0,0으로 설정
+            SetRandomPositionForIce(newItem);  // Ice 위치 설정
+            items.push_back(newItem);  // vector에 새로운 아이템 추가
+            lastCreateTime = now;
         }
-
-        auto nowCoin = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> elapsedCoin = nowCoin - lastCoinTime;
-
-        if (elapsedCoin.count() >= 5.0) {  // 5초가 지났는지 확인
-            Coin* newCoin = new Coin(0, 0, L"resources/coin.bmp");  // 초기 위치는 임의로 0,0으로 설정
-            SetRandomPositionForCoin(newCoin);  // Coin 위치 설정
-            coins.push_back(newCoin);  // vector에 새로운 coin 추가
-            lastCoinTime = nowCoin;
-        }
-
 
         //CheckCollisions();  // ice와 player 간의 충돌 확인
 
@@ -438,7 +353,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
     case WM_DESTROY:
         KillTimer(hwnd, 1);  // 타이머 해제
         PostQuitMessage(0);
-        for (auto iceInstance : ices) {
+        for (auto iceInstance : items) {
             delete iceInstance;
         }
         return 0;
