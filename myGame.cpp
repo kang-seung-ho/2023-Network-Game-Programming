@@ -3,14 +3,18 @@
 #define HEAL 3
 #define ICE 4
 #define COIN 5
+#define WINDOW_WIDTH 1280
+#define WINDOW_HEIGHT 720
+#define CHARACTER_WIDTH 30
+#define CHARACTER_HEIGHT 30
 
 #include <windows.h>
 #include <random>
 #include <chrono>
 using namespace std;
 
-uniform_int_distribution uid1{ 50, 700 }; //가로
-uniform_int_distribution uid2{ 50, 500 }; //세로
+uniform_int_distribution uid1{ 50, 1100 }; //가로
+uniform_int_distribution uid2{ 50, 630 }; //세로
 uniform_int_distribution uid3{ 1,5 }; //아이템
 default_random_engine dre{ random_device{}() };
 
@@ -18,12 +22,16 @@ default_random_engine dre{ random_device{}() };
 class Character {
 private:
     int x, y;
-    const int size = 20;  // 캐릭터 크기
+    const int size = 30;  // 캐릭터 크기
 
     int hp = 100;
-    int speed = 3;
+    int speed = 5;
     int power = 10;
-    int overHeating = 0;
+    int overHeating = 0; //과열 게이지
+
+    //마지막 키 방향 저장
+    int lastDirectionX = 1;  // 1: right, -1: left
+    int lastDirectionY = 0;  // 1: down, -1: up
 
 public:
 
@@ -35,8 +43,25 @@ public:
     }
 
     void Move(int dx, int dy) {
-        x += dx;
-        y += dy;
+        int newX = x + dx;
+        int newY = y + dy;
+
+        // 화면 경계 체크
+        if (newX < 0) {
+            newX = 0;
+        }
+        if (newX + CHARACTER_WIDTH > WINDOW_WIDTH) {//오른쪽 수정 필요
+            newX = WINDOW_WIDTH - CHARACTER_WIDTH;
+        }
+        if (newY < 0) {
+            newY = 0;
+        }
+        if (newY + 2*CHARACTER_HEIGHT + 10 > WINDOW_HEIGHT) {
+            newY = WINDOW_HEIGHT - 2*CHARACTER_HEIGHT - 10;
+        }
+
+        x = newX;
+        y = newY;
     }
 
     void SpeedUp() {
@@ -63,7 +88,56 @@ public:
             hp += 30;
         }
     }
+
+    int GetX() const { return x; }
+    int GetY() const { return y; }
+
+    void SetLastDirection(int dx, int dy) {
+        if (dx != 0) {
+            lastDirectionX = dx > 0 ? 1 : -1;
+            lastDirectionY = 0;
+        }
+        if (dy != 0) {
+            lastDirectionY = dy > 0 ? 1 : -1;
+            lastDirectionX = 0;
+        }
+    }
+    int GetLastDirectionX() const { return lastDirectionX; }
+    int GetLastDirectionY() const { return lastDirectionY; }
 };
+
+//쏠때마다 Character의 overheating+1 해줘야 함
+class Bullet {
+private:
+    int x, y;
+    const int size = 5;  // 총알 크기
+    const int speed = 10;  // 총알 속도
+
+    int directionX;
+    int directionY;
+
+public:
+    Bullet(int x, int y, int directionX, int directionY) : x(x), y(y), directionX(directionX), directionY(directionY) {}
+
+    void Draw(HDC hdc) {
+        HBRUSH hBrush = CreateSolidBrush(RGB(0, 0, 255));  // 파란색 브러시 생성
+        HBRUSH oldBrush = (HBRUSH)SelectObject(hdc, hBrush);  // 브러시 선택
+
+        Ellipse(hdc, x, y, x + size, y + size);  // 총알 그리기
+
+        SelectObject(hdc, oldBrush);  // 원래 브러시 선택
+        DeleteObject(hBrush);  // 브러시 리소스 해제
+    }
+
+    void Move() {
+        x += speed * directionX;
+        y += speed * directionY;
+    }
+
+    int GetX() const { return x; }
+    int GetY() const { return y; }
+};
+
 
 class Item {
 private:
@@ -175,7 +249,10 @@ Character* player = NULL;  // 전역 포인터로 선언
 Wall* walls[5] = { NULL, NULL, NULL, NULL, NULL };
 
 vector<Item*> items;
-auto lastCreateTime = std::chrono::high_resolution_clock::now();  // 마지막 Ice 생성 시간 초기화
+auto lastCreateTime = std::chrono::high_resolution_clock::now();  // 마지막 아이템 생성 시간 초기화
+
+vector<Bullet*> bullets;
+
 
 //void CheckCollisions() {
 //    for (auto it = ices.begin(); it != ices.end();) {
@@ -253,7 +330,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR pCmdLine, int nCmdShow)
     //화면크기 고정.
     HWND hwnd = CreateWindowEx(0, CLASS_NAME, L"네트워크게임프로그래밍",
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
-        CW_USEDEFAULT, CW_USEDEFAULT, 800, 600,
+        CW_USEDEFAULT, CW_USEDEFAULT, 1280, 720,
         nullptr, nullptr, hInstance, nullptr);
 
 
@@ -320,15 +397,19 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
     case WM_TIMER: {
         if (GetAsyncKeyState(VK_UP)) {
             player->Move(0, -3);
+            player->SetLastDirection(0, -1);
         }
         if (GetAsyncKeyState(VK_DOWN)) {
             player->Move(0, 3);
+            player->SetLastDirection(0, 1);
         }
         if (GetAsyncKeyState(VK_LEFT)) {
             player->Move(-3, 0);
+            player->SetLastDirection(-1, 0);
         }
         if (GetAsyncKeyState(VK_RIGHT)) {
             player->Move(3, 0);
+            player->SetLastDirection(1, 0);
         }
 
         auto now = std::chrono::high_resolution_clock::now();
@@ -341,6 +422,22 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             lastCreateTime = now;
         }
 
+        if (GetAsyncKeyState('D') & 0x8000) {
+            Bullet* newBullet = new Bullet(
+                player->GetX() + 20,
+                player->GetY() + 10,
+                player->GetLastDirectionX(),
+                player->GetLastDirectionY()
+            );
+            bullets.push_back(newBullet);
+        }
+
+        for (auto bullet : bullets) {
+            bullet->Move();  // 모든 총알을 움직입니다.
+        }
+
+
+        
         //CheckCollisions();  // 아이템과 player 간의 충돌 확인
 
         InvalidateRect(hwnd, nullptr, TRUE);  // 화면 갱신
@@ -353,8 +450,12 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
     case WM_DESTROY:
         KillTimer(hwnd, 1);  // 타이머 해제
         PostQuitMessage(0);
-        for (auto iceInstance : items) {
-            delete iceInstance;
+        for (auto itemInstance : items) {
+            delete itemInstance;
+        }
+
+        for (auto bullet : bullets) {
+            delete bullet;
         }
         return 0;
 
