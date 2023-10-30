@@ -1,69 +1,120 @@
-#define POWERUP 1
-#define SPEEDUP 2
-#define HEAL 3
-#define ICE 4
-#define COIN 5
-#define WINDOW_WIDTH 1280
-#define WINDOW_HEIGHT 720
-#define CHARACTER_WIDTH 30
-#define CHARACTER_HEIGHT 30
+#define POWERUP_ITEM 1
+#define SPEEDUP_ITEM 2
+#define HEAL_ITEM 3
+#define ICE_ITEM 4
+#define WALL 5
+#define BULLET 6
+#define CHARACTER 10
+
+#define BULLET_SPEED 10
+#define BULLEAT_UP 11
+#define BULLET_DOWN 12
+#define BULLET_RIGHT 13
+#define BULLET_LEFT 14
+
+#define ITEM_SIZE 20
+#define WALL_SIZE 30
+#define CHARACTER_SIZE 30
+#define WINDOW_SIZE 800
 
 #include <windows.h>
 #include <random>
 #include <chrono>
+
 using namespace std;
 
-uniform_int_distribution uid1{ 50, 1100 }; //가로
-uniform_int_distribution uid2{ 50, 630 }; //세로
-uniform_int_distribution uid3{ 1,5 }; //아이템
+uniform_int_distribution randomWallPos{ 300, 500 };
+uniform_int_distribution randomItemPos{ 100, 700 };
+//uniform_int_distribution uid2{ 50, 500 }; //세로
+uniform_int_distribution randomItemType{ 1,4 }; //아이템
 default_random_engine dre{ random_device{}() };
 
-// Character 클래스 선언
-class Character {
-private:
-    int x, y;
-    const int size = 30;  // 캐릭터 크기
-
-    int hp = 100;
-    int speed = 5;
-    int power = 10;
-    int overHeating = 0; //과열 게이지
-
-    //마지막 키 방향 저장
-    int lastDirectionX = 1;  // 1: right, -1: left
-    int lastDirectionY = 0;  // 1: down, -1: up
+class GameObject {
+protected:
+    int x, y; // 객체의 좌측 상단 모서리 좌표
+    int objectSize;
+    char objectType;
+    HBITMAP hBitmap;
 
 public:
+    GameObject(int x, int y, int objectSize, char objectType) : x(x), y(y), objectSize(objectSize), objectType(objectType) {
+        /* hBitmap = (HBITMAP)LoadImage(NULL, bitmapPath, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+         if (hBitmap == NULL) {
+             MessageBox(NULL, L"Failed to load image", L"Error", MB_OK);
+         }*/ // 하위 클래스에서 생성자를 부를 때 부모 클래스 생성자가 먼저 불려서 비트맵이 NULL이라 에러가 계속 나옴
+    };
+    virtual ~GameObject() {
+        if (hBitmap) {
+            DeleteObject(hBitmap);
+        }
+    };
 
-    HWND hwnd;
-    Character(int x, int y, HWND hwnd) : x(x), y(y), hwnd(hwnd) {}
+    //getter 함수들
+    int GetX() const { return x; }
+    int GetY() const { return y; }
+    int GetObjectSize() const { return objectSize; }
+    char GetObjectType() const { return objectType; }
+
+    void SetPosition(int x, int y) { // 오브젝트 랜덤 위치 지정 시 호출
+        this->x = x;
+        this->y = y;
+    }
+
+    bool CheckCollision(const GameObject* obj1, const GameObject* obj2) // 충돌체크
+    {
+        return (obj1->GetX() < (obj2->GetX() + obj2->GetObjectSize())) && ((obj1->GetX() + obj1->GetObjectSize()) > obj2->GetX()) &&
+            (obj1->GetY() < (obj2->GetY() + obj2->GetObjectSize())) && ((obj1->GetY() + obj1->GetObjectSize()) > obj2->GetY());
+    }
 
     void Draw(HDC hdc) {
-        Rectangle(hdc, x, y, x + size, y + size);
+        HDC memDC = CreateCompatibleDC(hdc);
+        HBITMAP oldBitmap = (HBITMAP)SelectObject(memDC, hBitmap);
+
+        BitBlt(hdc, x, y, objectSize, objectSize, memDC, 0, 0, SRCCOPY);
+
+        SelectObject(memDC, oldBitmap);
+        DeleteDC(memDC);
     }
 
-    void Move(int dx, int dy) {
-        int newX = x + dx;
-        int newY = y + dy;
+};
 
-        // 화면 경계 체크
-        if (newX < 0) {
-            newX = 0;
-        }
-        if (newX + CHARACTER_WIDTH > WINDOW_WIDTH) {//오른쪽 수정 필요
-            newX = WINDOW_WIDTH - CHARACTER_WIDTH;
-        }
-        if (newY < 0) {
-            newY = 0;
-        }
-        if (newY + 2*CHARACTER_HEIGHT + 10 > WINDOW_HEIGHT) {
-            newY = WINDOW_HEIGHT - 2*CHARACTER_HEIGHT - 10;
-        }
+class Character : public GameObject {
+private:
+    int hp;
+    int speed;
+    int power;
+    int overHeating;
+    char fireDir;
 
-        x = newX;
-        y = newY;
+public:
+    Character() : GameObject(50, 50, CHARACTER_SIZE, CHARACTER) {
+        hBitmap = (HBITMAP)LoadImage(NULL, L"resources/player.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+        if (hBitmap == NULL) {
+            MessageBox(NULL, L"Failed to load image", L"Error", MB_OK);
+        }
+        hp = 100;
+        speed = 3;
+        power = 6;
+        overHeating = 0;
+        fireDir = 0;
+    };
+
+    ~Character() {};
+
+    void Draw(HDC hdc) {
+        GameObject::Draw(hdc);
+    };
+
+    void Move(int dx, int dy) { // 위치 갱신 및 화면 밖으로 못나가게, 논리는 맞는데 실제로는 화면 크기가 좀 다름.. 맞출 방법 고민해야함.
+        if ((x + dx >= 0) && (x + dx + CHARACTER_SIZE <= WINDOW_SIZE))
+            x += dx;
+        if ((y + dy >= 0) && (y + dy + CHARACTER_SIZE <= WINDOW_SIZE))
+            y += dy;
     }
 
+    char GetDir() const {
+        return fireDir;
+    }
     void SpeedUp() {
         speed = 5;
     }
@@ -77,7 +128,7 @@ public:
     }
 
     void Power() { //시간 지난 뒤 다시 원래 속도로 복원
-        power = 10;
+        power = 6;
     }
 
     void HealingHp() {
@@ -88,97 +139,30 @@ public:
             hp += 30;
         }
     }
-
-    int GetX() const { return x; }
-    int GetY() const { return y; }
-
-    void SetLastDirection(int dx, int dy) {
-        if (dx != 0) {
-            lastDirectionX = dx > 0 ? 1 : -1;
-            lastDirectionY = 0;
-        }
-        if (dy != 0) {
-            lastDirectionY = dy > 0 ? 1 : -1;
-            lastDirectionX = 0;
-        }
-    }
-    int GetLastDirectionX() const { return lastDirectionX; }
-    int GetLastDirectionY() const { return lastDirectionY; }
 };
 
-//쏠때마다 Character의 overheating+1 해줘야 함
-class Bullet {
-private:
-    int x, y;
-    const int size = 5;  // 총알 크기
-    const int speed = 10;  // 총알 속도
-
-    int directionX;
-    int directionY;
-
+class Item : public GameObject {
 public:
-    Bullet(int x, int y, int directionX, int directionY) : x(x), y(y), directionX(directionX), directionY(directionY) {}
-
-    void Draw(HDC hdc) {
-        HBRUSH hBrush = CreateSolidBrush(RGB(0, 0, 255));  // 파란색 브러시 생성
-        HBRUSH oldBrush = (HBRUSH)SelectObject(hdc, hBrush);  // 브러시 선택
-
-        Ellipse(hdc, x, y, x + size, y + size);  // 총알 그리기
-
-        SelectObject(hdc, oldBrush);  // 원래 브러시 선택
-        DeleteObject(hBrush);  // 브러시 리소스 해제
+    Item() : GameObject(0, 0, ITEM_SIZE, randomItemType(dre)) {
+        hBitmap = (HBITMAP)LoadImage(NULL, GetBitmapPath(objectType), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+        if (hBitmap == NULL) {
+            MessageBox(NULL, L"Failed to load image", L"Error", MB_OK);
+        }
     }
 
-    void Move() {
-        x += speed * directionX;
-        y += speed * directionY;
-    }
-
-    int GetX() const { return x; }
-    int GetY() const { return y; }
-};
-
-
-class Item {
-private:
-    int x, y;
-    int itemType;
-    HBITMAP hBitmap;
-
-public:
-    Item(int x, int y) : x(x), y(y)
-    {
-        itemType = uid3(dre); // 랜덤 아이템
-
-        if (itemType == POWERUP) {
-            hBitmap = (HBITMAP)LoadImage(NULL, L"resources/power.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-            if (hBitmap == NULL) {
-                MessageBox(NULL, L"Failed to load image", L"Error", MB_OK);
-            }
-        }
-        else if (itemType == SPEEDUP) {
-            hBitmap = (HBITMAP)LoadImage(NULL, L"resources/speed.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-            if (hBitmap == NULL) {
-                MessageBox(NULL, L"Failed to load image", L"Error", MB_OK);
-            }
-        }
-        else if (itemType == HEAL) {
-            hBitmap = (HBITMAP)LoadImage(NULL, L"resources/heal.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-            if (hBitmap == NULL) {
-                MessageBox(NULL, L"Failed to load image", L"Error", MB_OK);
-            }
-        }
-        else if (itemType == ICE) {
-            hBitmap = (HBITMAP)LoadImage(NULL, L"resources/ice.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-            if (hBitmap == NULL) {
-                MessageBox(NULL, L"Failed to load image", L"Error", MB_OK);
-            }
-        }
-        else if (itemType == COIN) {
-            hBitmap = (HBITMAP)LoadImage(NULL, L"resources/coin.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-            if (hBitmap == NULL) {
-                MessageBox(NULL, L"Failed to load image", L"Error", MB_OK);
-            }
+    LPCWSTR GetBitmapPath(char itemType) {
+        switch (itemType) {
+        case POWERUP_ITEM:
+            return L"resources/power.bmp";
+        case SPEEDUP_ITEM:
+            return L"resources/speed.bmp";
+        case HEAL_ITEM:
+            return L"resources/heal.bmp";
+        case ICE_ITEM:
+            return L"resources/ice.bmp";
+        default:
+            MessageBox(NULL, L"Unknown item type", L"Error", MB_OK);
+            return L"";
         }
     }
 
@@ -187,34 +171,14 @@ public:
     }
 
     void Draw(HDC hdc) {
-        HDC memDC = CreateCompatibleDC(hdc);
-        HBITMAP oldBitmap = (HBITMAP)SelectObject(memDC, hBitmap);
-
-        BitBlt(hdc, x, y, 20, 20, memDC, 0, 0, SRCCOPY);
-
-        SelectObject(memDC, oldBitmap);
-        DeleteDC(memDC);
+        GameObject::Draw(hdc);
     }
-
-    void SetPosition(int x, int y) {
-        this->x = x;
-        this->y = y;
-    }
-
-    int GetX() const { return x; }
-    int GetY() const { return y; }
-
 };
 
-class Wall {
-private:
-    int x, y;
-    HBITMAP hBitmap;
-
+class Wall : public GameObject {
 public:
-    Wall(int x, int y, LPCWSTR imagePath) : x(x), y(y)
-    {
-        hBitmap = (HBITMAP)LoadImage(NULL, imagePath, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+    Wall() : GameObject(0, 0, WALL_SIZE, WALL) {
+        hBitmap = (HBITMAP)LoadImage(NULL, L"resources/wall.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
         if (hBitmap == NULL) {
             MessageBox(NULL, L"Failed to load image", L"Error", MB_OK);
         }
@@ -225,91 +189,70 @@ public:
     }
 
     void Draw(HDC hdc) {
-        HDC memDC = CreateCompatibleDC(hdc);
-        HBITMAP oldBitmap = (HBITMAP)SelectObject(memDC, hBitmap);
-
-        BitBlt(hdc, x, y, 30, 30, memDC, 0, 0, SRCCOPY);
-
-        SelectObject(memDC, oldBitmap);
-        DeleteDC(memDC);
+        GameObject::Draw(hdc);
     }
-
-    void SetPosition(int x, int y) {
-        this->x = x;
-        this->y = y;
-    }
-
-    int GetX() const { return x; }
-    int GetY() const { return y; }
-
 };
 
+class Bullet : public GameObject { // 고민이 좀 필요한 부분->나중에 작성하고 지우자
+private:
+    char dir;
+
+public:
+    Bullet() : GameObject(0, 0, WALL_SIZE, WALL) {
+        hBitmap = (HBITMAP)LoadImage(NULL, L"resources/bullet.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+        if (hBitmap == NULL) {
+            MessageBox(NULL, L"Failed to load image", L"Error", MB_OK);
+        }
+    }
+
+    ~Bullet() {
+        DeleteObject(hBitmap);  // 이미지 리소스 해제
+    }
+
+    void Draw(HDC hdc) {
+        GameObject::Draw(hdc);
+    }
+};
 
 Character* player = NULL;  // 전역 포인터로 선언
 Wall* walls[5] = { NULL, NULL, NULL, NULL, NULL };
 
 vector<Item*> items;
-auto lastCreateTime = std::chrono::high_resolution_clock::now();  // 마지막 아이템 생성 시간 초기화
-
 vector<Bullet*> bullets;
+auto lastCreateTime = std::chrono::high_resolution_clock::now();  // 마지막 Item 생성 시간 초기화
 
-
-//void CheckCollisions() {
-//    for (auto it = ices.begin(); it != ices.end();) {
-//        if (IsColliding(player->GetX(), player->GetY(), (*it)->GetX(), (*it)->GetY(), 20)) {
-//            delete* it;
-//            it = ices.erase(it);
-//        }
-//        else {
-//            ++it;
-//        }
-//    }
-//}
-
-bool IsColliding(int x1, int y1, int x2, int y2, int size) {
-    return (x1 < x2 + size && x1 + size > x2 && y1 < y2 + size && y1 + size > y2);
-}
-
-void SetRandomPositionForIce(Item* item) {
-    bool collides = false;
+void SetRandomPosition(GameObject* obj) { // 벽, 아이템 생성
+    bool collision = false;
     do {
-        collides = false;
-        int randX = uid1(dre);
-        int randY = uid2(dre);
+        collision = false;
+        int randX, randY;
+        if (obj->GetObjectType() == WALL)
+        {
+            randX = randomWallPos(dre);
+            randY = randomWallPos(dre);
+        }
+        else {
+            randX = randomItemPos(dre);
+            randY = randomItemPos(dre);
+        }
+
+        obj->SetPosition(randX, randY);
 
         // 기존 벽들과 충돌하는지 확인
         for (int i = 0; i < 5; ++i) {
-            if (walls[i] && IsColliding(randX, randY, walls[i]->GetX(), walls[i]->GetY(), 30)) {
-                collides = true;
+            if (walls[i] && walls[i] != obj && obj->CheckCollision(obj, walls[i])) {
+                collision = true;
                 break;
             }
         }
-        if (!collides) {
-            item->SetPosition(randX, randY);
-        }
-    } while (collides);
-}
 
-
-
-void SetRandomPositionForWall(Wall* wall) {
-    bool collides = false;
-    do {
-        collides = false;
-        int randX = uid1(dre);
-        int randY = uid2(dre);
-
-        // 기존 벽들과 충돌하는지 확인
-        for (int i = 0; i < 5; ++i) {
-            if (walls[i] && IsColliding(randX, randY, walls[i]->GetX(), walls[i]->GetY(), 30)) {
-                collides = true;
+        for (Item* item : items) {
+            if (obj->CheckCollision(obj, item)) {
+                collision = true;
                 break;
             }
         }
-        if (!collides) {
-            wall->SetPosition(randX, randY);
-        }
-    } while (collides);
+    } while (collision);
 }
 
 
@@ -330,18 +273,18 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR pCmdLine, int nCmdShow)
     //화면크기 고정.
     HWND hwnd = CreateWindowEx(0, CLASS_NAME, L"네트워크게임프로그래밍",
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
-        CW_USEDEFAULT, CW_USEDEFAULT, 1280, 720,
+        CW_USEDEFAULT, CW_USEDEFAULT, WINDOW_SIZE, WINDOW_SIZE,
         nullptr, nullptr, hInstance, nullptr);
 
 
 
     // 객체를 생성하고 전역 포인터에 할당
-    player = new Character(100, 100, hwnd);
+    player = new Character;
 
     // 벽 객체 초기화 위치 (랜덤)
     for (int i = 0; i < 5; ++i) {
-        walls[i] = new Wall(0, 0, L"resources/wall.bmp"); // 초기 위치는 임의로 0,0으로 설정
-        SetRandomPositionForWall(walls[i]);     // 여기서 위치를 랜덤하게 설정
+        walls[i] = new Wall;
+        SetRandomPosition(walls[i]);     // 여기서 위치를 랜덤하게 설정
     }
 
     ShowWindow(hwnd, nCmdShow);
@@ -393,52 +336,29 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         EndPaint(hwnd, &ps);
     } break;
 
-
     case WM_TIMER: {
         if (GetAsyncKeyState(VK_UP)) {
             player->Move(0, -3);
-            player->SetLastDirection(0, -1);
         }
         if (GetAsyncKeyState(VK_DOWN)) {
             player->Move(0, 3);
-            player->SetLastDirection(0, 1);
         }
         if (GetAsyncKeyState(VK_LEFT)) {
             player->Move(-3, 0);
-            player->SetLastDirection(-1, 0);
         }
         if (GetAsyncKeyState(VK_RIGHT)) {
             player->Move(3, 0);
-            player->SetLastDirection(1, 0);
         }
 
         auto now = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed = now - lastCreateTime;
 
         if (elapsed.count() >= 5.0) {  // 5초가 지났는지 확인
-            Item* newItem = new Item(0, 0);  // 초기 위치는 임의로 0,0으로 설정
-            SetRandomPositionForIce(newItem);  // 위치 설정
-            items.push_back(newItem);  // vector에 새로운 아이템 추가
+            Item* newItem = new Item;  // 초기 위치는 임의로 0,0으로 설정
+            SetRandomPosition(newItem);  // Ice 위치 설정
+            items.emplace_back(newItem);  // vector에 새로운 아이템 추가
             lastCreateTime = now;
         }
-
-        if (GetAsyncKeyState('D') & 0x8000) {
-            Bullet* newBullet = new Bullet(
-                player->GetX() + 20,
-                player->GetY() + 10,
-                player->GetLastDirectionX(),
-                player->GetLastDirectionY()
-            );
-            bullets.push_back(newBullet);
-        }
-
-        for (auto bullet : bullets) {
-            bullet->Move();  // 모든 총알을 움직입니다.
-        }
-
-
-        
-        //CheckCollisions();  // 아이템과 player 간의 충돌 확인
 
         InvalidateRect(hwnd, nullptr, TRUE);  // 화면 갱신
     } break;
@@ -447,17 +367,15 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         SetTimer(hwnd, 1, 1000 / 60, NULL);  // 60 FPS로 타이머 설정
     } break;
 
-    case WM_DESTROY:
+    case WM_DESTROY: {
         KillTimer(hwnd, 1);  // 타이머 해제
         PostQuitMessage(0);
-        for (auto itemInstance : items) {
-            delete itemInstance;
-        }
-
-        for (auto bullet : bullets) {
-            delete bullet;
+        for (auto iceInstance : items) {
+            delete iceInstance;
         }
         return 0;
+    }
+
 
     default:
         return DefWindowProc(hwnd, uMsg, wParam, lParam);
