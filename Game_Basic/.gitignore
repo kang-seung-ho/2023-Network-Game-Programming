@@ -26,6 +26,9 @@
 *.a
 *.lib
 
+*.vsidx
+*.VC
+
 # Executables
 *.exe
 *.out

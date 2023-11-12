@@ -26,6 +26,9 @@ void CreateItem();
 double frame_time = 0.0;
 
 
+auto gameStartTime = std::chrono::high_resolution_clock::now();
+int remainingTime = 120;
+
 
 //int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdParam, int nCmdShow)
 int  WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_  LPSTR lpszCmdParam, _In_  int nCmdShow)
@@ -94,6 +97,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 		SelectObject(mapdc, map);
 		//TextOut(hdc, 450, 400, L"GAME OVER", 9);
 		DrawAll(mapdc); // 객체 전부 그리기
+
+		{
+			RECT timerRect = { 350, 10, 450, 30 }; // Adjust coordinates as needed
+			FillRect(hdc, &timerRect, WHITE); // Assuming WHITE is an HBRUSH you've created earlier
+
+			// Draw remaining time text on top of the white rectangle
+			SetBkColor(hdc, RGB(255, 255, 255)); // Set background color for text to white
+			SetTextColor(hdc, RGB(0, 0, 0)); // Set text color to black
+			int minutes = remainingTime / 60;
+			int seconds = remainingTime % 60;
+			swprintf_s(text, L"%02d:%02d", minutes, seconds);
+			DrawText(hdc, text, -1, &timerRect, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
+
+		}
 
 		Rectangle(mdc, -1, -1, 800, 800);
 		//StretchBlt(mdc, 0, 0, 800, 800, mapdc, p->GetPos().x - 200, p->GetPos().y - 200, 400, 400, SRCCOPY);
@@ -171,8 +188,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 				CreateItem(); // 아이템 생성
 				lastCreateTime = now;
 			}
+
+			std::chrono::duration<double> elapsedTotal = now - gameStartTime;
+
+			// 게임 시작 이후 총 경과한 시간을 계산하여 남은 시간을 업데이트
+			remainingTime = 120 - static_cast<int>(std::chrono::duration_cast<std::chrono::seconds>(elapsedTotal).count());
+			if (remainingTime <= 0) {
+				// 시간이 다 됐을 때 실행할 코드
+				MessageBox(hWnd, L"시간이 다 되었습니다!", L"게임 오버", MB_OK);
+				PostQuitMessage(0);
+			}
+
+			InvalidateRect(hWnd, NULL, false);
 		}
-		InvalidateRect(hWnd, NULL, false);
+		
 		break;
 	case WM_DESTROY:
 		PostQuitMessage(0);
