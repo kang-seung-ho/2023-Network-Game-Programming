@@ -43,3 +43,9 @@
 *.suo 
 *.db
 *.ipch
+*.VC.db-shm
+*.VC.db-wal
+*.VC.opendb
+*.json
+*.command
+*.vsidx
