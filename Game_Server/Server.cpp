@@ -31,7 +31,7 @@ DWORD WINAPI ClientFunction(LPVOID arg)
 	inet_ntop(AF_INET, &clientaddr.sin_addr, addr, sizeof(addr));
 
 	for (int i = 0; i < sizeof(clientarr) / sizeof(clientData); ++i) {
-		if (clientarr[i].portNum == 0) { //ºóÄ­¿¡ ³Ö°í ³¡³»±â À§ÇØ
+		if (clientarr[i].portNum == 0) {
 			strcpy(clientarr[i].ipaddr, addr);
 			clientarr[i].portNum = ntohs(clientaddr.sin_port);
 			break;

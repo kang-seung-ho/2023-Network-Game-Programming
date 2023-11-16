@@ -71,7 +71,7 @@ std::vector<obstacle*> obstacles;
 auto lastCreateTime = std::chrono::high_resolution_clock::now();
 
 static TCHAR text[100];
-
+int GameOverCnt{};
 LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 {
 	PAINTSTRUCT ps;
@@ -195,8 +195,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 			remainingTime = 120 - static_cast<int>(std::chrono::duration_cast<std::chrono::seconds>(elapsedTotal).count());
 			if (remainingTime <= 0) {
 				// 시간이 다 됐을 때 실행할 코드
-				MessageBox(hWnd, L"시간이 다 되었습니다!", L"게임 오버", MB_OK);
-				PostQuitMessage(0);
+				GameOverCnt++;
+				if (GameOverCnt == 1) {
+					MessageBox(hWnd, L"시간이 다 되었습니다!", L"게임 오버", MB_OK);
+					PostQuitMessage(0);
+				}
+				if (GameOverCnt > 1) {
+					break;
+				}
 			}
 
 			InvalidateRect(hWnd, NULL, false);
