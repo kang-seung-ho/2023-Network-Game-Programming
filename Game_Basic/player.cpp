@@ -29,8 +29,8 @@ void player::UpdateMove(bool collide)
 		fdir = dir;
 	if (pos.x < 15) pos.x = 15;
 	if (pos.y < 15) pos.y = 15;
-	if (pos.x > 1185) pos.x = 1185;
-	if (pos.y > 1185) pos.y = 1185;
+	if (pos.x > 1135) pos.x = 1135;
+	if (pos.y > 1100) pos.y = 1100; //1185
 }
 
 void player::UpdatePlayerStats(int itemType)
