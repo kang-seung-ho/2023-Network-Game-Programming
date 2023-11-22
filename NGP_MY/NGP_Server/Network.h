@@ -3,15 +3,14 @@
 #include <list>
 #include "../Game_Basic/Vector2D.h"
 
-enum MSG
+enum GameMSG
 {
-    MSG_WAITING, // 플레이어 로비상태(게임 시작 전) 메세지
-    MSG_GAME, // 플레이어 인게임 상태 메세지
-    MSG_COLLIDE, // 충돌 메세지
-    MSG_LEAVE, // 플레이어 이탈 메세지
-    MSG_CLEAR // 게임 클리어 메세지
+    GameMSG_WAITING,
+    GameMSG_GAME,
+    GameMSG_COLLIDE,
+    GameMSG_LEAVE,
+    GameMSG_CLEAR
 };
-
 
 class Data{
 public:

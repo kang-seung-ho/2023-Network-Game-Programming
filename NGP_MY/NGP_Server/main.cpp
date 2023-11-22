@@ -7,7 +7,8 @@
 
 #include "Common.h"
 #include "Network.h"
-#include "WaitingPlayerFunc.h"
+
+#include "SocketFunc.h"
 
 #define SERVERPORT 9000
 #define MAX_BUFFER_SIZE 52
@@ -18,7 +19,7 @@ std::list<SOCKET> SocketList;
 std::mutex cs;
 std::mutex socketlist;   // cs의 리스트
 
-void sendMSG(SOCKET sock, MSG data);
+void sendMSG(SOCKET sock, GameMSG data);
 Data* recvMSG(SOCKET sock);
 
 DWORD WINAPI ClientThread(LPVOID arg)
@@ -26,8 +27,12 @@ DWORD WINAPI ClientThread(LPVOID arg)
 	std::string userName;
 	int retval;
 	SOCKET client_sock = (SOCKET)arg;
-	std::lock_guard<std::mutex> lock(socketlist);
-	SocketList.push_back(client_sock);
+
+	{
+		// 여러 스레드에서 동시에 socketlist에 접근 가능 -> socketlist는 lock처리
+		std::lock_guard<std::mutex> lock(socketlist);
+		SocketList.push_back(client_sock);
+	}
 
 	struct sockaddr_in clientaddr;
 	char addr[INET_ADDRSTRLEN];
@@ -48,11 +53,14 @@ DWORD WINAPI ClientThread(LPVOID arg)
 		int msg;
 		memcpy(&msg, buf, sizeof(msg));
 
+		// MsgList & uerName 접근 Lock -> cs Lock
+		// MsgList: 메시지를 추가하는 중에 다른 스레드 접근 제어
+		// uerName: 클라이언트에서 수신한 메시지의 이름을 userName 변수에 저장도 중 다른 클라 스레드 접근 제어
 		std::lock_guard<std::mutex> lock(cs);
 
 		switch (msg)
 		{
-		case MSG_WAITING: // 플레이어 로비상태(게임 시작 전) 메세지
+		case GameMSG_WAITING: // 플레이어 로비상태(게임 시작 전) 메세지
 			data = new WaitingPlayer;
 			::ZeroMemory(data, sizeof(data));  // memory 초기화
 			memcpy(((WaitingPlayer*)data), buf, sizeof(buf));   // 수신 데이터를 객체에 복사
@@ -60,31 +68,37 @@ DWORD WINAPI ClientThread(LPVOID arg)
 			userName = std::string{ ((WaitingPlayer*)data)->getId() };  // 이름을 변수에 저장
 			break;
 
-		case  MSG_GAME: // 플레이어 인게임 상태 메세지
+		case  GameMSG_GAME: // 플레이어 인게임 상태 메세지
 			data = new GamePlayer;
-			::ZeroMemory(data, sizeof(data));  // memory 초기화
-			memcpy(((GamePlayer*)data), buf, sizeof(buf));   // 수신 데이터를 객체에 복사
-			MsgList.push_front((GamePlayer*)data);   // 메세지함수 맨 앞에 추가
+			::ZeroMemory(data, sizeof(data)); 
+			memcpy(((GamePlayer*)data), buf, sizeof(buf));
+			MsgList.push_front((GamePlayer*)data);   
 			break;
 
-		case MSG_COLLIDE: // 충돌 메세지
+		case GameMSG_COLLIDE: // 충돌 메세지
 			break;
 
-		case MSG_CLEAR: // 게임 클리어 메세지
+		case GameMSG_CLEAR: // 게임 클리어 메세지
 			break;
 		}
 	}
 
-	std::lock_guard<std::mutex> socklist_lock(socketlist);
+	{
+		std::lock_guard<std::mutex> socklist_lock(socketlist);
 
-	char* c_name = (char*)userName.c_str();
-	data = new LeavePlayer{ c_name, MSG_LEAVE };  // 이탈
-	std::lock_guard<std::mutex> lock(cs);
-	MsgList.push_front((LeavePlayer*)data);
+		char* c_name = (char*)userName.c_str();
 
-	auto p = find(SocketList.begin(), SocketList.end(), client_sock);
-	closesocket(*p);
-	SocketList.remove(*p);
+		{
+			// userName Lock
+			std::lock_guard<std::mutex> lock(cs);
+			data = new LeavePlayer{ c_name, GameMSG_LEAVE };  // 이탈
+			MsgList.push_front((LeavePlayer*)data);
+		}
+
+		auto p = find(SocketList.begin(), SocketList.end(), client_sock);
+		closesocket(*p);
+		SocketList.remove(*p);
+	}
 
 	printf("[TCP 서버] 클라이언트 종료: IP 주소=%s, 포트 번호=%d\n", addr, ntohs(clientaddr.sin_port));
 	std::cout << "클라이언트 크기 - " << SocketList.size() << std::endl;
@@ -127,11 +141,11 @@ DWORD WINAPI msgThread(LPVOID arg)
 			// 처리해야 할 메세지 코드
 			switch (data->getMsg()) {
 
-			case MSG_WAITING: // 플레이어 로비상태(게임 시작 전) 메세지
+			case GameMSG_WAITING: // 플레이어 로비상태(게임 시작 전) 메세지
 				for (auto p = SocketList.begin(); p != SocketList.end(); ++p) {
 					std::cout << " SOCKET - " << *p << std::endl << std::endl;
 
-					sendMSG(*p, MSG_WAITING);
+					sendMSG(*p, GameMSG_WAITING);
 
 					// 데이터 보내기
 					int retval = sendWaitingPlayer(*p, WaitingPlayer{ ((WaitingPlayer*)data)->getId(), ((WaitingPlayer*)data)->getState(), data->getMsg()});
@@ -142,16 +156,16 @@ DWORD WINAPI msgThread(LPVOID arg)
 				}
 				break;
 
-			case  MSG_GAME: // 플레이어 인게임 상태 메세지
+			case  GameMSG_GAME: // 플레이어 인게임 상태 메세지
 				break;
 
-			case MSG_COLLIDE: // 충돌 메세지
+			case GameMSG_COLLIDE: // 충돌 메세지
 				break;
 
-			case MSG_LEAVE: // 플레이어 이탈 메세지
+			case GameMSG_LEAVE: // 플레이어 이탈 메세지
 				break;
 
-			case MSG_CLEAR: // 게임 클리어 메세지
+			case GameMSG_CLEAR: // 게임 클리어 메세지
 				break;
 			}
 			MsgList.pop_front();
@@ -231,7 +245,7 @@ int main(int argc, char* argv[])
 	return 0;
 }
 
-void sendMSG(SOCKET sock, MSG data)
+void sendMSG(SOCKET sock, GameMSG data)
 {
 	int retval;
 	retval = send(sock, (char*)&data, sizeof(4), 0);
