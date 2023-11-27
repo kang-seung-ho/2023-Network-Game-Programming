@@ -171,6 +171,8 @@ DWORD WINAPI msgThread(LPVOID arg)
 			MsgList.pop_front();
 		}
 	}
+
+	return 0;
 }
 
 

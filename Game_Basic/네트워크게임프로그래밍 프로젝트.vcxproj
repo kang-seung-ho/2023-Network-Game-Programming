@@ -128,7 +128,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="bullet.cpp" />
-    <ClCompile Include="Connect_To_Server.cpp" />
     <ClCompile Include="frametime.cpp" />
     <ClCompile Include="gameObject.cpp" />
     <ClCompile Include="item.cpp" />

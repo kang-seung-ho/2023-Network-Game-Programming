@@ -12,6 +12,7 @@
 #include "bullet.h"
 #include "item.h"
 #include "obstacle.h"
+#include "Common.h"
 
 HINSTANCE g_hInst;
 LPCTSTR lpszClass = L"Window Class Name";
@@ -29,10 +30,65 @@ double frame_time = 0.0;
 auto gameStartTime = std::chrono::high_resolution_clock::now();
 int remainingTime = 120;
 
+#define SERVERIP   "127.0.0.1"
+#define SERVERPORT 9000
+#define BUFFERSIZE 4096
+
+struct KeyInputMsg {
+	char msgType;
+	char key;
+};
+
+void SendKeyInput(SOCKET sock, char keyinput, char msgType) { //msgType -> 'K'는 Keyinput
+	KeyInputMsg msg;
+	msg.msgType = msgType;
+	msg.key = keyinput;
+
+	// 메시지 전송
+	int retval = send(sock, (char*)&msg, sizeof(msg), 0);
+	if (retval == SOCKET_ERROR) {
+		err_display("send()");
+	}
+}
+
+SOCKET CLIENT;
+DWORD WINAPI ClientMain(LPVOID arg)
+{
+	int retval;
+	char buffer[BUFFERSIZE];
+
+	// 소켓 생성
+	SOCKET client_sock = socket(AF_INET, SOCK_STREAM, 0);
+	if (client_sock == INVALID_SOCKET) err_quit("socket()");
+
+	// connect()
+	struct sockaddr_in serveraddr;
+	memset(&serveraddr, 0, sizeof(serveraddr));
+	serveraddr.sin_family = AF_INET;
+	serveraddr.sin_addr.s_addr = inet_addr(SERVERIP);
+	serveraddr.sin_port = htons(SERVERPORT);
+	retval = connect(client_sock, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
+	if (retval == SOCKET_ERROR) err_quit("connect()");
+
+	CLIENT = client_sock;
+
+	/*closesocket(client_sock);*/
+
+	return 0;
+}
 
 //int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdParam, int nCmdShow)
 int  WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_  LPSTR lpszCmdParam, _In_  int nCmdShow)
 {
+	// 윈속 초기화
+	WSADATA wsa;
+	if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
+		return 1;
+
+	// 소켓 통신 스레드 생성
+	CreateThread(NULL, 0, ClientMain, NULL, 0, NULL);
+
+
 	HWND hWnd;
 	MSG Message;
 	WNDCLASSEX WndClass;
@@ -151,18 +207,27 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 		if (wParam == VK_ESCAPE)
 			PostQuitMessage(0);
 		else if (wParam == VK_UP)
-			p->SetDir({ 0, -1 });
+			SendKeyInput(CLIENT, 'U', 'K');
+			//p->SetDir({ 0, -1 });
 		else if (wParam == VK_LEFT)
-			p->SetDir({ -1, 0 });
+			SendKeyInput(CLIENT, 'L', 'K');
+			//p->SetDir({ -1, 0 });
 		else if (wParam == VK_DOWN)
-			p->SetDir({ 0, 1 });
+			SendKeyInput(CLIENT, 'D', 'K');
+			//p->SetDir({ 0, 1 });
 		else if (wParam == VK_RIGHT)
-			p->SetDir({ 1, 0 });
+			SendKeyInput(CLIENT, 'R', 'K');
+			//p->SetDir({ 1, 0 });
 		else if (wParam == 'D' && p->GetHeat() < 10)
 		{
+			SendKeyInput(CLIENT, 'A', 'K'); //D키가 중복이라 Attack의 A값으로 보내기로
 			bullets.emplace_back(new bullet(p->GetPos() + p->GetFDir() * 25, p->GetFDir()));
 			p->SetHeat(1);
 			p->SetHeatCount(3.0);
+		}
+		else if (wParam == 'Q' || wParam == 'q') { //프로그램 종료(Q키)
+			closesocket(CLIENT);
+			exit(0);
 		}
 		break;
 	case WM_KEYUP:
@@ -174,6 +239,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 			p->SetDir({ 0, 0 });
 		else if (wParam == VK_RIGHT && p->GetDir() == Vector2D<float>(1, 0))
 			p->SetDir({ 0, 0 });
+	
 		break;
 	case WM_TIMER:
 		frame_time = GetFrameTime();
