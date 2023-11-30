@@ -5,13 +5,13 @@
 //#include <list>
 #include <chrono>
 
-#include "Vector2D.h"
 #include "frametime.h"
 #include "gameObject.h"
-#include "player.h"
+//#include "player.h"
 #include "bullet.h"
 #include "item.h"
 #include "obstacle.h"
+#include "ui.h"
 
 HINSTANCE g_hInst;
 LPCTSTR lpszClass = L"Window Class Name";
@@ -64,7 +64,8 @@ int  WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 	return Message.wParam;
 }
 
-player* p = new player(Vector2D<float>(100, 100));
+player* p = new player(100, 100);
+ui* u = new ui;
 std::vector<bullet*> bullets;
 std::vector<item*> items;
 std::vector<obstacle*> obstacles;
@@ -82,9 +83,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 	switch (iMessage) {
 	case WM_CREATE:
 		CreateObstacles(); // 장애물 생성 함수
-		SetTimer(hWnd, 1, 16, NULL);
-		BLACK = CreateSolidBrush(RGB(0, 0, 0));
-		WHITE = CreateSolidBrush(RGB(255, 255, 255));
+		SetTimer(hWnd, 1, 16, NULL); // 현재 업데이트되는 프레임 수에 따라 객체 움직임 속도가 달라짐
+
 		break;
 	case WM_PAINT:
 		hdc = BeginPaint(hWnd, &ps);
@@ -93,87 +93,71 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 		hBitmap = CreateCompatibleBitmap(hdc, 800, 800);
 		map = CreateCompatibleBitmap(hdc, 1200, 1200);
 		SelectObject(mdc, hBitmap);
-		SelectObject(mdc, WHITE);
 		SelectObject(mapdc, map);
-		//TextOut(hdc, 450, 400, L"GAME OVER", 9);
-		DrawAll(mapdc); // 객체 전부 그리기
 
-		{
-			RECT timerRect = { 350, 10, 450, 30 }; // Adjust coordinates as needed
-			FillRect(hdc, &timerRect, WHITE); // Assuming WHITE is an HBRUSH you've created earlier
-
-			// Draw remaining time text on top of the white rectangle
-			SetBkColor(hdc, RGB(255, 255, 255)); // Set background color for text to white
-			SetTextColor(hdc, RGB(0, 0, 0)); // Set text color to black
-			int minutes = remainingTime / 60;
-			int seconds = remainingTime % 60;
-			swprintf_s(text, L"%02d:%02d", minutes, seconds);
-			DrawText(hdc, text, -1, &timerRect, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
-
-		}
-
-		Rectangle(mdc, -1, -1, 800, 800);
-		//StretchBlt(mdc, 0, 0, 800, 800, mapdc, p->GetPos().x - 200, p->GetPos().y - 200, 400, 400, SRCCOPY);
+		////TextOut(hdc, 450, 400, L"GAME OVER", 9);
+		DrawAll(mapdc);
 		StretchBlt(mdc, 0, 0, 800, 800, mapdc, 0, 0, 1200, 1200, SRCCOPY);
-		swprintf_s(text, L"score : %3d", p->GetScore());
-		TextOut(mdc, 10, 692, text, 11);
-		swprintf_s(text, L"%2d", p->GetHeat());
-		TextOut(mdc, 255, 717, text, 2);
-		swprintf_s(text, L"%3d", p->GetHP());
-		TextOut(mdc, 255, 742, text, 3);
-		TextOut(mdc, 10, 715, L"과열", 2);
-		TextOut(mdc, 10, 740, L"체력", 2);
-		Rectangle(mdc, 50, 715, 250, 735);
-		Rectangle(mdc, 50, 740, 250, 760);
-		HBRUSH mb, ob;
-		if (p->GetHeat() == 10)
-			mb = CreateSolidBrush(RGB(255, 0, 0));
-		else
-			mb = CreateSolidBrush(RGB(255, 200, 100));
-		ob = (HBRUSH)SelectObject(mdc, mb);
-		Rectangle(mdc, 50, 715, 50 + p->GetHeat() * 20, 735);
-		SelectObject(mdc, ob);
-		DeleteObject(mb);
-		mb = CreateSolidBrush(RGB(255, 100, 100));
-		ob = (HBRUSH)SelectObject(mdc, mb);
-		Rectangle(mdc, 50, 740, 50 + p->GetHP() * 2, 760);
-		SelectObject(mdc, ob);
-		DeleteObject(mb);
-
+		u->DrawHeat(mdc, p->GetHeat());
+		u->DrawHP(mdc, p->GetHP());
+		u->DrawTimer(mdc, remainingTime);
+		u->DrawScore(mdc, p->GetScore());
 		BitBlt(hdc, 0, 0, 800, 800, mdc, 0, 0, SRCCOPY);
+
 		DeleteDC(mapdc);
 		DeleteDC(mdc);
 		DeleteObject(map);
 		DeleteObject(hBitmap);
 		EndPaint(hWnd, &ps);
+
 		break;
 	case WM_KEYDOWN:
 		if (wParam == VK_ESCAPE)
 			PostQuitMessage(0);
-		else if (wParam == VK_UP)
-			p->SetDir({ 0, -1 });
-		else if (wParam == VK_LEFT)
-			p->SetDir({ -1, 0 });
-		else if (wParam == VK_DOWN)
-			p->SetDir({ 0, 1 });
-		else if (wParam == VK_RIGHT)
-			p->SetDir({ 1, 0 });
+		else if (wParam == VK_UP) {
+			p->SetDirX(0);
+			p->SetDirY(-1);
+		}
+
+		else if (wParam == VK_LEFT) {
+			p->SetDirX(-1);
+			p->SetDirY(0);
+		}
+		else if (wParam == VK_DOWN) {
+			p->SetDirX(0);
+			p->SetDirY(1);
+		}
+		else if (wParam == VK_RIGHT) {
+			p->SetDirX(1);
+			p->SetDirY(0);
+		}
+
 		else if (wParam == 'D' && p->GetHeat() < 10)
 		{
-			bullets.emplace_back(new bullet(p->GetPos() + p->GetFDir() * 25, p->GetFDir()));
-			p->SetHeat(1);
+			bullets.emplace_back(new bullet(p->GetPosX() + p->GetFDirX() * 25, p->GetPosY() + p->GetFDirY() * 25, p->GetFDirX(), p->GetFDirY()));
+			p->SetHeat(p->GetHeat() + 1);
 			p->SetHeatCount(3.0);
 		}
 		break;
 	case WM_KEYUP:
-		if (wParam == VK_UP && p->GetDir() == Vector2D<float>(0, -1))
-			p->SetDir({ 0, 0 });
-		else if (wParam == VK_LEFT && p->GetDir() == Vector2D<float>(-1, 0))
-			p->SetDir({ 0, 0 });
-		else if (wParam == VK_DOWN && p->GetDir() == Vector2D<float>(0, 1))
-			p->SetDir({ 0, 0 });
-		else if (wParam == VK_RIGHT && p->GetDir() == Vector2D<float>(1, 0))
-			p->SetDir({ 0, 0 });
+		if (wParam == VK_UP && p->GetDirY() == -1) {
+			p->SetDirX(0);
+			p->SetDirY(0);
+		}
+
+		else if (wParam == VK_LEFT && p->GetDirX() == -1) {
+			p->SetDirX(0);
+			p->SetDirY(0);
+		}
+
+		else if (wParam == VK_DOWN && p->GetDirY() == 1) {
+			p->SetDirX(0);
+			p->SetDirY(0);
+		}
+		else if (wParam == VK_RIGHT && p->GetDirX() == 1) {
+			p->SetDirX(0);
+			p->SetDirY(0);
+		}
 		break;
 	case WM_TIMER:
 		frame_time = GetFrameTime();
@@ -184,7 +168,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 			auto now = std::chrono::high_resolution_clock::now();
 			std::chrono::duration<double> elapsed = now - lastCreateTime;
 
-			if (elapsed.count() >= 5.0) {
+			if (elapsed.count() >= 3.0) {
 				CreateItem(); // 아이템 생성
 				lastCreateTime = now;
 			}
@@ -207,7 +191,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 
 			InvalidateRect(hWnd, NULL, false);
 		}
-		
+
 		break;
 	case WM_DESTROY:
 		PostQuitMessage(0);
@@ -221,52 +205,52 @@ void CreateObstacles()
 	// 좌측 상단
 	for (int i = 0; i < 5; i++)
 	{
-		obstacle* wall = new obstacle(Vector2D<float>(300 + i * OBSTACLE_SIZE, 300));
+		obstacle* wall = new obstacle(300 + i * OBSTACLE_SIZE, 300);
 		obstacles.emplace_back(wall);
 	}
 
 	for (int i = 1; i < 5; i++)
 	{
-		obstacle* wall = new obstacle(Vector2D<float>(300, 300 + i * OBSTACLE_SIZE));
+		obstacle* wall = new obstacle(300, 300 + i * OBSTACLE_SIZE);
 		obstacles.emplace_back(wall);
 	}
 
 	// 우측 상단
 	for (int i = 0; i < 5; i++)
 	{
-		obstacle* wall = new obstacle(Vector2D<float>(900 - i * OBSTACLE_SIZE, 300));
+		obstacle* wall = new obstacle(900 - i * OBSTACLE_SIZE, 300);
 		obstacles.emplace_back(wall);
 	}
 
 	for (int i = 1; i < 5; i++)
 	{
-		obstacle* wall = new obstacle(Vector2D<float>(900, 300 + i * OBSTACLE_SIZE));
+		obstacle* wall = new obstacle(900, 300 + i * OBSTACLE_SIZE);
 		obstacles.emplace_back(wall);
 	}
 
 	// 좌측 하단
 	for (int i = 0; i < 5; i++)
 	{
-		obstacle* wall = new obstacle(Vector2D<float>(300 + i * OBSTACLE_SIZE, 900));
+		obstacle* wall = new obstacle(300 + i * OBSTACLE_SIZE, 900);
 		obstacles.emplace_back(wall);
 	}
 
 	for (int i = 1; i < 5; i++)
 	{
-		obstacle* wall = new obstacle(Vector2D<float>(300, 900 - i * OBSTACLE_SIZE));
+		obstacle* wall = new obstacle(300, 900 - i * OBSTACLE_SIZE);
 		obstacles.emplace_back(wall);
 	}
 
 	// 우측 하단
 	for (int i = 0; i < 5; i++)
 	{
-		obstacle* wall = new obstacle(Vector2D<float>(900 - i * OBSTACLE_SIZE, 900));
+		obstacle* wall = new obstacle(900 - i * OBSTACLE_SIZE, 900);
 		obstacles.emplace_back(wall);
 	}
 
 	for (int i = 1; i < 5; i++)
 	{
-		obstacle* wall = new obstacle(Vector2D<float>(900, 900 - i * OBSTACLE_SIZE));
+		obstacle* wall = new obstacle(900, 900 - i * OBSTACLE_SIZE);
 		obstacles.emplace_back(wall);
 	}
 
@@ -325,7 +309,8 @@ void GameUpdate()
 	for (auto it = obstacles.begin(); it != obstacles.end();) {
 		if (p->CheckCollision(*it)) {
 			p->UpdateMove(false);
-			p->SetDir({ 0, 0 });
+			p->SetDirX(0);
+			p->SetDirY(0);
 			break;
 		}
 		else
@@ -358,7 +343,7 @@ void GameUpdate()
 	// 총알 벽과 충돌 체크
 	for (auto it = bullets.begin(); it != bullets.end();) {
 		(*it)->update();
-		if ((*it)->dir.GetLenth() == 0)
+		if (((*it)->GetDirX() + (*it)->GetDirY()) == 0)
 			it = bullets.erase(it);
 		else
 			++it;
