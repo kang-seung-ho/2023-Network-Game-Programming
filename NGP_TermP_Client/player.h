@@ -1,53 +1,55 @@
 #include <Windows.h>
-#include "Vector2D.h"
 #include "gameObject.h"
 #include "define.h"
 
 class player : public gameObject
 {
 private:
-	Vector2D<float> dir, fdir;
+	int dx, dy;
+	int fdx, fdy;
 	COLORREF color;
 	int power;
 	int heat;
 	float heat_count;
 	int score;
 	int HP;
-	float speed;
+	int speed;
 public:
-	player(Vector2D<float> pos) : gameObject(Vector2D<float>(pos), PLAYER_SIZE), // 부모 클래스의 생성자 호출
-		dir(0, 0),
-		fdir(1, 0),
-		color(RGB(100, 255, 100)),
-		power(10),
-		heat(0),
-		score(0),
-		HP(100),
-		speed(5.0) {}
+	player(int x, int y) : gameObject(x, y, PLAYER_SIZE), // 부모 클래스 생성자 호출
+		dx(0), dy(0), fdx(1), fdy(0),
+		color(RGB(100, 255, 100)), power(10),
+		heat(0), score(0), HP(100), speed(5)
+	{};
 
-	Vector2D<float> GetPos() const { return pos; }
-	Vector2D<float> GetDir() const { return dir; }
-	Vector2D<float> GetFDir() const { return fdir; }
+	//getter..
+	int GetDirX() const { return dx; }
+	int GetDirY() const { return dy; }
+	int GetFDirX() const { return fdx; }
+	int GetFDirY() const { return fdy; }
+
 	int GetPower() const { return power; }
 	int GetHeat() const { return heat; }
 	float GetHeatCount() const { return heat_count; }
 	int GetScore() const { return score; }
 	int GetHP() const { return HP; }
-	float GetSpeed() const { return speed; }
+	int GetSpeed() const { return speed; }
+
+	// setter..
+	void SetDirX(int newX) { dx = newX; }
+	void SetDirY(int newY) { dy = newY; }
+	void SetFDirX(int newX) { fdx = newX; }
+	void SetFDirY(int newY) { fdy = newY; }
+
+	void SetPower(int newPower) { power = newPower; }
+	void SetHeat(int newHeat) { if (heat < 10) heat = newHeat; }
+	void SetHeatCount(float newHeat_count) { heat_count = newHeat_count; }
+	void SetScore(int newScore) { score = newScore; }
+	void SetHP(int newHP) { HP = newHP; }
+	void SetSpeed(int newSpeed) { speed = newSpeed; }
 
 	void UpdateHeat();
 	void UpdateMove(bool collide);
 	void UpdatePlayerStats(int itmeType);
 	void Draw(HDC hdc);
-
-	void SetDir(const Vector2D<float>& newDir);
-	void SetHeat(int count);
-	void SetHeatCount(float newCount);
-
-	void PowerUp();
-	void SpeedUp();
-	void Heal();
-	void CoolHeat();
-	void ScoreUp();
 };
 

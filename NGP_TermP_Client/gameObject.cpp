@@ -1,8 +1,23 @@
 #include "gameObject.h"
 
-Vector2D<float> gameObject::GetPos() const
+int gameObject::GetPosX() const
 {
-    return pos;
+    return x;
+}
+
+int gameObject::GetPosY() const
+{
+    return y;
+}
+
+void gameObject::SetPosX(int newX)
+{
+    x = newX;
+}
+
+void gameObject::SetPosY(int newY)
+{
+    y = newY;
 }
 
 int gameObject::GetObjectSize() const
@@ -12,9 +27,9 @@ int gameObject::GetObjectSize() const
 
 bool gameObject::CheckCollision(const gameObject* other)
 {
-    return (this->GetPos().x < (other->GetPos().x + other->GetObjectSize())) &&
-        ((this->GetPos().x + this->GetObjectSize()) > other->GetPos().x) &&
-        (this->GetPos().y < (other->GetPos().y + other->GetObjectSize())) &&
-        ((this->GetPos().y + this->GetObjectSize()) > other->GetPos().y);
+    return (this->GetPosX() < (other->GetPosX() + other->GetObjectSize())) &&
+        ((this->GetPosX() + this->GetObjectSize()) > other->GetPosX()) &&
+        (this->GetPosY() < (other->GetPosY() + other->GetObjectSize())) &&
+        ((this->GetPosY() + this->GetObjectSize()) > other->GetPosY());
 }
 

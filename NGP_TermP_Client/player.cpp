@@ -1,4 +1,3 @@
-#include "Vector2D.h"
 #include "frametime.h"
 #include "player.h"
 #include "bullet.h"
@@ -20,17 +19,24 @@ void player::UpdateHeat()
 }
 void player::UpdateMove(bool collide)
 {
-	if (!collide)
-		pos -= dir * speed;
-	else
-		pos += dir * speed;
+	if (!collide) {
+		x -= dx * speed;
+		y -= dy * speed;
+	}
 
-	if (dir.GetLenth() != 0)
-		fdir = dir;
-	if (pos.x < 15) pos.x = 15;
-	if (pos.y < 15) pos.y = 15;
-	if (pos.x > 1135) pos.x = 1135;
-	if (pos.y > 1100) pos.y = 1100; //1185
+	else {
+		x += dx * speed;
+		y += dy * speed;
+	}
+
+	if ((dx + dy) != 0) { // 움직이고 있다면 발사 방향을 그 방향으로 설정
+		fdx = dx;
+		fdy = dy;
+	}
+	if (x < 15) x = 15;
+	if (y < 15) y = 15;
+	if (x > 1135) x = 1135;
+	if (y > 1100) y = 1100; //1185
 }
 
 void player::UpdatePlayerStats(int itemType)
@@ -38,19 +44,22 @@ void player::UpdatePlayerStats(int itemType)
 	switch (itemType)
 	{
 	case POWERUP_ITEM:
-		PowerUp();
+		SetPower(GetPower() + 2);
 		break;
 	case SPEEDUP_ITEM:
-		SpeedUp();
+		SetSpeed(GetSpeed() + 1);
 		break;
 	case HEAL_ITEM:
-		Heal();
+		if (GetHP() < 70)
+			SetHP(GetHP() + 30);
+		else
+			SetHP(100);
 		break;
 	case ICE_ITEM:
-		CoolHeat();
+		SetHeat(0);
 		break;
 	case COIN:
-		ScoreUp();
+		SetScore(GetScore() + 5);
 		break;
 	default:
 		break;
@@ -70,56 +79,13 @@ void player::Draw(HDC hdc) {
 	int cannonLength = 25;
 	int cannonWidth = 10;
 
-	Rectangle(hdc, pos.x, pos.y, pos.x + PLAYER_SIZE, pos.y + PLAYER_SIZE);
+	Rectangle(hdc, x, y, x + PLAYER_SIZE, y + PLAYER_SIZE);
 	Rectangle(hdc,
-		pos.x + 15 - (fdir.x < 0 ? cannonLength : cannonWidth / 2), // 왼쪽 또는 중앙에서 시작
-		pos.y + 15 - (fdir.y < 0 ? cannonLength : cannonWidth / 2), // 위쪽 또는 중앙에서 시작
-		pos.x + 15 + (fdir.x > 0 ? cannonLength : cannonWidth / 2), // 오른쪽 또는 중앙에서 시작
-		pos.y + 15 + (fdir.y > 0 ? cannonLength : cannonWidth / 2)); // 아래쪽 또는 중앙에서 시작
-	Ellipse(hdc, pos.x + 10, pos.y + 10, pos.x + 20, pos.y + 20);
+		x + 15 - (fdx < 0 ? cannonLength : cannonWidth / 2), // 왼쪽 또는 중앙에서 시작
+		y + 15 - (fdy < 0 ? cannonLength : cannonWidth / 2), // 위쪽 또는 중앙에서 시작
+		x + 15 + (fdx > 0 ? cannonLength : cannonWidth / 2), // 오른쪽 또는 중앙에서 시작
+		y + 15 + (fdy > 0 ? cannonLength : cannonWidth / 2)); // 아래쪽 또는 중앙에서 시작
+	Ellipse(hdc, x + 10, y + 10, x + 20, y + 20);
 	SelectObject(hdc, ob);
 	DeleteObject(mb);
-}
-
-void player::PowerUp()
-{
-	power += 2;
-}
-
-void player::SpeedUp()
-{
-	speed += 0.5; // 일단 이렇게 해보자
-}
-
-void player::Heal()
-{
-	if (HP += 30 > 100)
-		HP = 100;
-	else
-		HP += 30;
-}
-
-void player::CoolHeat()
-{
-	heat = 0;
-}
-
-void player::ScoreUp()
-{
-	score += 5;
-}
-
-void player::SetDir(const Vector2D<float>& newDir)
-{
-	dir = newDir;
-}
-
-void player::SetHeat(int count) {
-	if (heat < 10)
-		heat += count;
-}
-
-void player::SetHeatCount(float newCount)
-{
-	heat_count = newCount;
 }

@@ -1,14 +1,21 @@
 #pragma once
 #include <Windows.h>
-#include "Vector2D.h"
 #include "gameObject.h"
+#include "define.h"
 
 class bullet : public gameObject
 {
 public:
-	Vector2D<float> dir;
-	bullet(Vector2D<float> pos, Vector2D<float> dir) : gameObject(Vector2D<float>(pos), BULLET_SIZE), dir(dir) {}
+	int dx, dy;
+	bullet(int x, int y, int dx, int dy) : gameObject(x, y, BULLET_SIZE), dx(dx), dy(dy) {}
 	~bullet() {};
+
+	int GetDirX() const { return dx; }
+	int GetDirY() const { return dy; }
+
+	void SetDirX(int newX) { dx = newX; }
+	void SetDirY(int newY) { dy = newY; }
 	void update();
 	void draw(HDC hdc);
+
 };

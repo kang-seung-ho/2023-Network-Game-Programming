@@ -1,1 +1,2 @@
 C:\Users\qkrdh\OneDrive\바탕 화면\NGP\NGP_Client\x64\Debug\NGP_Client.exe
+C:\Users\givoo\source\repos\2023-2-NGP\NGP_TermP_Client\x64\Debug\NGP_Client.exe

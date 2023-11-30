@@ -7,13 +7,13 @@ std::default_random_engine dre(rd());
 std::uniform_int_distribution<int> uidType(1, 5);
 std::uniform_int_distribution<int> uidPos(200, 1000);
 
-item::item() : gameObject(Vector2D<float>(uidPos(dre), uidPos(dre)), ITEM_SIZE)
+item::item() : gameObject(x, y, ITEM_SIZE)
 {
-	/*pos.x = uidPos(dre);
-	pos.y = uidPos(dre);*/
+	x = uidPos(dre);
+	y = uidPos(dre);
 	itemType = uidType(dre);
 	hBitmap = NULL;
-	
+
 	switch (itemType)
 	{
 	case POWERUP_ITEM:
@@ -34,16 +34,16 @@ item::item() : gameObject(Vector2D<float>(uidPos(dre), uidPos(dre)), ITEM_SIZE)
 	default:
 		break;
 	}
-	
+
 }
 
 void item::draw(HDC hdc)
 {
-    HDC memDC = CreateCompatibleDC(hdc);
-    HBITMAP oldBitmap = (HBITMAP)SelectObject(memDC, hBitmap);
+	HDC memDC = CreateCompatibleDC(hdc);
+	HBITMAP oldBitmap = (HBITMAP)SelectObject(memDC, hBitmap);
 
-    BitBlt(hdc, pos.x, pos.y, ITEM_SIZE, ITEM_SIZE, memDC, 0, 0, SRCCOPY);
+	BitBlt(hdc, x, y, ITEM_SIZE, ITEM_SIZE, memDC, 0, 0, SRCCOPY);
 
-    SelectObject(memDC, oldBitmap);
-    DeleteDC(memDC);
+	SelectObject(memDC, oldBitmap);
+	DeleteDC(memDC);
 }
