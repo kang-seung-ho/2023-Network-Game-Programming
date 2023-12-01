@@ -13,6 +13,8 @@
 #include "obstacle.h"
 #include "ui.h"
 
+#include "Common.h"
+
 HINSTANCE g_hInst;
 LPCTSTR lpszClass = L"Window Class Name";
 LPCTSTR lpszWindowName = L"Simple Shooting Game";
@@ -29,10 +31,71 @@ double frame_time = 0.0;
 auto gameStartTime = std::chrono::high_resolution_clock::now();
 int remainingTime = 120;
 
+#define BUFFERSIZE 1024
+#define SERVERIP "127.0.0.1"
+#define SERVERPORT 9000
+
+
+struct cs_move {
+	char size;
+	char	type;
+	char	direction;			// 0 : up, 1: down, 2:left, 3:right
+};
+
+/*
+struct cs_attack {
+	char size;
+	char type;
+	float aim_x;
+	float aim_y;
+};
+*/
+#define KEY 1
+void sendKEY(SOCKET client_sock, char key)
+{
+	cs_move a;
+	a.size = sizeof(cs_move);
+	a.type = KEY;
+	int retval = send(client_sock, (char*)&a, sizeof(cs_move), 0);
+	if (client_sock == INVALID_SOCKET) err_quit("send()");
+}
+
+SOCKET CLIENT;
+DWORD WINAPI ClientMain(LPVOID arg)
+{
+	int retval;
+	char buffer[BUFFERSIZE];
+
+	// 소켓 생성
+	CLIENT = socket(AF_INET, SOCK_STREAM, 0);
+	if (CLIENT == INVALID_SOCKET) err_quit("socket()");
+
+	// connect()
+	struct sockaddr_in serveraddr;
+	memset(&serveraddr, 0, sizeof(serveraddr));
+	serveraddr.sin_family = AF_INET;
+	serveraddr.sin_addr.s_addr = inet_addr(SERVERIP);
+	serveraddr.sin_port = htons(SERVERPORT);
+	retval = connect(CLIENT, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
+	if (retval == SOCKET_ERROR) err_quit("connect()");
+
+	/*closesocket(client_sock);*/
+
+	return 0;
+}
 
 //int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdParam, int nCmdShow)
 int  WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_  LPSTR lpszCmdParam, _In_  int nCmdShow)
 {
+	// 윈속 초기화
+	WSADATA wsa;
+	if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
+		return 1;
+
+	// 소켓 통신 스레드 생성
+	CreateThread(NULL, 0, ClientMain, NULL, 0, NULL);
+
+
 	HWND hWnd;
 	MSG Message;
 	WNDCLASSEX WndClass;
@@ -73,6 +136,15 @@ auto lastCreateTime = std::chrono::high_resolution_clock::now();
 
 static TCHAR text[100];
 int GameOverCnt{};
+
+char ClientID{};
+struct sc_login {
+	char size;
+	char type;
+	char id;
+};
+sc_login myClientInfo;
+int ret;
 LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 {
 	PAINTSTRUCT ps;
@@ -83,7 +155,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 	switch (iMessage) {
 	case WM_CREATE:
 		CreateObstacles(); // 장애물 생성 함수
-		SetTimer(hWnd, 1, 16, NULL); // 현재 업데이트되는 프레임 수에 따라 객체 움직임 속도가 달라짐
+		SetTimer(hWnd, 1, 32, NULL); // 현재 업데이트되는 프레임 수에 따라 객체 움직임 속도가 달라짐
+
+		ret = recv(CLIENT, (char*)&myClientInfo, sizeof(sc_login), 0);
+		ClientID = myClientInfo.id;
 
 		break;
 	case WM_PAINT:
@@ -109,31 +184,33 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 		DeleteObject(map);
 		DeleteObject(hBitmap);
 		EndPaint(hWnd, &ps);
-
 		break;
 	case WM_KEYDOWN:
 		if (wParam == VK_ESCAPE)
 			PostQuitMessage(0);
 		else if (wParam == VK_UP) {
+			sendKEY(CLIENT, 'U');
 			p->SetDirX(0);
 			p->SetDirY(-1);
 		}
-
 		else if (wParam == VK_LEFT) {
+			sendKEY(CLIENT, 'L');
 			p->SetDirX(-1);
 			p->SetDirY(0);
 		}
 		else if (wParam == VK_DOWN) {
+			sendKEY(CLIENT, 'D');
 			p->SetDirX(0);
 			p->SetDirY(1);
 		}
 		else if (wParam == VK_RIGHT) {
+			sendKEY(CLIENT, 'R');
 			p->SetDirX(1);
 			p->SetDirY(0);
 		}
-
 		else if (wParam == 'D' && p->GetHeat() < 10)
 		{
+			sendKEY(CLIENT, 'A');
 			bullets.emplace_back(new bullet(p->GetPosX() + p->GetFDirX() * 25, p->GetPosY() + p->GetFDirY() * 25, p->GetFDirX(), p->GetFDirY()));
 			p->SetHeat(p->GetHeat() + 1);
 			p->SetHeatCount(3.0);
