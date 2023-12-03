@@ -159,6 +159,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 
 		ret = recv(CLIENT, (char*)&myClientInfo, sizeof(sc_login), 0);
 		ClientID = myClientInfo.id;
+		p->SetID((int)ClientID);
 
 		break;
 	case WM_PAINT:
@@ -177,6 +178,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 		u->DrawHP(mdc, p->GetHP());
 		u->DrawTimer(mdc, remainingTime);
 		u->DrawScore(mdc, p->GetScore());
+		u->DrawName(mdc, p->GetID());
 		BitBlt(hdc, 0, 0, 800, 800, mdc, 0, 0, SRCCOPY);
 
 		DeleteDC(mapdc);

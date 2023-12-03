@@ -12,5 +12,6 @@ public:
     void DrawHP(HDC hdc, int hp);
     void DrawTimer(HDC hdc, int remainingTime);
     void DrawScore(HDC hdc, int score);
+    void DrawName(HDC hdc, int ID);
 };
 

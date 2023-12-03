@@ -5,6 +5,7 @@
 class player : public gameObject
 {
 private:
+	int ID;
 	int dx, dy;
 	int fdx, fdy;
 	COLORREF color;
@@ -16,7 +17,7 @@ private:
 	int speed;
 public:
 	player(int x, int y) : gameObject(x, y, PLAYER_SIZE), // 부모 클래스 생성자 호출
-		dx(0), dy(0), fdx(1), fdy(0),
+		ID(0), dx(0), dy(0), fdx(1), fdy(0),
 		color(RGB(100, 255, 100)), power(10),
 		heat(0), score(0), HP(100), speed(5)
 	{};
@@ -27,6 +28,7 @@ public:
 	int GetFDirX() const { return fdx; }
 	int GetFDirY() const { return fdy; }
 
+	int GetID() const { return ID; }
 	int GetPower() const { return power; }
 	int GetHeat() const { return heat; }
 	float GetHeatCount() const { return heat_count; }
@@ -40,6 +42,7 @@ public:
 	void SetFDirX(int newX) { fdx = newX; }
 	void SetFDirY(int newY) { fdy = newY; }
 
+	void SetID(int newID) { ID = newID; }
 	void SetPower(int newPower) { power = newPower; }
 	void SetHeat(int newHeat) { if (heat < 10) heat = newHeat; }
 	void SetHeatCount(float newHeat_count) { heat_count = newHeat_count; }

@@ -68,3 +68,15 @@ void ui::DrawScore(HDC hdc, int score)
 	TextOut(hdc, 50, 690, scoreText, wcslen(scoreText));
 
 }
+
+void ui::DrawName(HDC hdc, int ID)
+{
+	SetBkColor(hdc, RGB(0, 0, 0));
+	SetTextColor(hdc, RGB(255, 255, 255));
+
+	TextOut(hdc, 10, 665, L"Player", 6);
+
+	wchar_t nameText[10];
+	swprintf_s(nameText, L"%d", ID);
+	TextOut(hdc, 60, 665, nameText, wcslen(nameText));
+}
