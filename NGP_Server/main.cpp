@@ -156,6 +156,7 @@ DWORD WINAPI clientThread(LPVOID arg)
 
 	send_login_ok_packet(&client_sock, id);//id부여
 	send_Init_Pos(&client_sock, id);//초기위치부여
+	
 	for (auto& cl : clients) {
 		if (cl.second.m_id == id) continue;
 		send_other_info_packet(&cl.second.c_socket, cl.second.m_id, id);
@@ -206,13 +207,8 @@ DWORD WINAPI sendPacket(LPVOID arg) {
 void gameStart()
 {
 	std::cout << "게임시작" << std::endl;
-	// 정보 초기화
-	clients[1].pos_x = 150;
-	clients[1].pos_y = 150;
-	clients[2].pos_x = 550;
-	clients[2].pos_y = 150;
-	clients[3].pos_x = 300;
-	clients[3].pos_y = 400;
+	//이때 시간을 초기화 하여 보낸다.
+
 
 	for (auto& cl : clients) {
 		send_start_game_packet(&cl.second.c_socket, cl.second.m_id);
@@ -227,14 +223,20 @@ void send_Init_Pos(SOCKET* client_socket, char client_id)
 	packet.size = sizeof(packet);
 	packet.type = 111;
 	if (client_id == 1) {
+		clients[1].pos_y = 100;
+		clients[1].pos_x = 200;
 		packet.y = 100;
 		packet.x = 200;
 	}
 	else if (client_id == 2) {
+		clients[2].pos_y = 600;
+		clients[2].pos_x = 600;
 		packet.y = 600;
-		packet.x = 200;
+		packet.x = 600;
 	}
 	else if (client_id == 3) {
+		clients[3].pos_y = 100;
+		clients[3].pos_x = 700;
 		packet.y = 100;
 		packet.x = 700;
 	}
