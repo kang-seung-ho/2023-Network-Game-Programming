@@ -13,5 +13,6 @@ public:
     void DrawTimer(HDC hdc, int remainingTime);
     void DrawScore(HDC hdc, int score);
     void DrawName(HDC hdc, int ID);
+    void DrawUI(HDC hdc, player* p, int remainingTime);
 };
 

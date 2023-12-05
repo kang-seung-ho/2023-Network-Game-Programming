@@ -80,3 +80,12 @@ void ui::DrawName(HDC hdc, int ID)
 	swprintf_s(nameText, L"%d", ID);
 	TextOut(hdc, 60, 665, nameText, wcslen(nameText));
 }
+
+void ui::DrawUI(HDC hdc, player* p, int remainingTime)
+{
+	DrawHeat(hdc, p->GetHeat());
+	DrawHP(hdc, p->GetHP());
+	DrawTimer(hdc, remainingTime);
+	DrawScore(hdc, p->GetScore());
+	DrawName(hdc, p->GetID());
+}
