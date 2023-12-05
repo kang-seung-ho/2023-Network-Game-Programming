@@ -32,7 +32,24 @@ double remainingTime = 120.0;
 #define BUFFERSIZE 1024
 #define SERVERIP "127.0.0.1"
 #define SERVERPORT 9000
+player* p = new player(100, 100);
+ui* UI = new ui;
+std::vector<player*> players; // p로 움직여서 보내고 데이터 받아와서 3명의 플레이어 벡터에 저장
+std::vector<bullet*> bullets;
+std::vector<item*> items;
+std::vector<obstacle*> obstacles;
 
+static TCHAR text[100];
+int GameOverCnt{};
+
+char ClientID{};
+struct sc_login {
+	char size;
+	char type;
+	char id;
+};
+sc_login myClientInfo;
+int ret;
 
 struct cs_move {
 	char size;
@@ -84,6 +101,25 @@ DWORD WINAPI ClientMain(LPVOID arg)
 	retval = connect(CLIENT, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
 	if (retval == SOCKET_ERROR) err_quit("connect()");
 
+	
+	ret = recv(CLIENT, (char*)&myClientInfo, sizeof(sc_login), 0);
+	ClientID = myClientInfo.id;
+	p->SetID((int)ClientID);
+
+	if (ClientID == 1) {
+		//색깔 지정
+	}
+	else if (ClientID == 2) {
+
+	}
+	else if (ClientID == 3) {
+
+	}
+	sc_InitPos posSet;
+	ret = recv(CLIENT, (char*)&posSet, sizeof(sc_InitPos), 0);
+	p->SetPosX(posSet.x);
+	p->SetPosY(posSet.y);
+
 	/*closesocket(client_sock);*/
 
 	return 0;
@@ -132,24 +168,7 @@ int  WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 	return Message.wParam;
 }
 
-player* p = new player(100, 100);
-ui* UI = new ui;
-std::vector<player*> players; // p로 움직여서 보내고 데이터 받아와서 3명의 플레이어 벡터에 저장
-std::vector<bullet*> bullets;
-std::vector<item*> items;
-std::vector<obstacle*> obstacles;
 
-static TCHAR text[100];
-int GameOverCnt{};
-
-char ClientID{};
-struct sc_login {
-	char size;
-	char type;
-	char id;
-};
-sc_login myClientInfo;
-int ret;
 LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 {
 	PAINTSTRUCT ps;
@@ -161,23 +180,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 		CreateObstacles(); // 장애물 생성 함수
 		SetTimer(hWnd, 1, 16, NULL); // 현재 업데이트되는 프레임 수에 따라 객체 움직임 속도가 달라짐
 
-		ret = recv(CLIENT, (char*)&myClientInfo, sizeof(sc_login), 0);
-		ClientID = myClientInfo.id;
-		p->SetID((int)ClientID);
-
-		if (ClientID == 1) {
-			//색깔 지정
-		}
-		else if (ClientID == 2) {
 		
-		}
-		else if (ClientID == 3) {
-			
-		}
-		sc_InitPos posSet;
-		ret = recv(CLIENT, (char*)&posSet, sizeof(sc_InitPos), 0);
-		p->SetPosX(posSet.x);
-		p->SetPosY(posSet.y);
 
 		break;
 	case WM_PAINT:
@@ -255,6 +258,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 			item_time -= CREATE_ITEM_TIME;
 		}
 
+
+		
 		GameUpdate(); // 게임 상태 업데이트
 
 		if (remainingTime < 0) {
@@ -330,7 +335,7 @@ void CreateObstacles()
 
 void DrawAllObjects(HDC hdc)
 {
-	//p->Draw(hdc);
+	p->Draw(hdc);
 	for (auto& player : players)
 		player->Draw(hdc);
 	for (auto& obstacle : obstacles)

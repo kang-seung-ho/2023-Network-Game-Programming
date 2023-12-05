@@ -151,6 +151,7 @@ DWORD WINAPI clientThread(LPVOID arg)
 	int len;
 	char id = thread_count;
 	player->m_id = id;
+	std::cout << player->m_id << std::endl;
 	buf = player->m_buf;
 	len = BUFSIZE;
 
@@ -240,7 +241,7 @@ void send_Init_Pos(SOCKET* client_socket, char client_id)
 		packet.y = 100;
 		packet.x = 700;
 	}
-
+	std::cout << packet.y << ", " << packet.x << std::endl;
 	send(*client_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
 }
 
