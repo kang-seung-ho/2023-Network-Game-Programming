@@ -21,15 +21,13 @@ LPCTSTR lpszWindowName = L"Simple Shooting Game";
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam);
 void CreateObstacles();
-void DrawAll(HDC hdc);
+void DrawAllObjects(HDC hdc);
 void GameUpdate();
 void CreateItem();
 
 double frame_time = 0.0;
-
-
-auto gameStartTime = std::chrono::high_resolution_clock::now();
-int remainingTime = 120;
+double item_time = 0.0;
+double remainingTime = 120.0;
 
 #define BUFFERSIZE 1024
 #define SERVERIP "127.0.0.1"
@@ -116,7 +114,7 @@ int  WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 	RegisterClassEx(&WndClass);
 
 	//--- 크기 변경 가능 (기존 (1024, 768))
-	hWnd = CreateWindow(lpszClass, lpszWindowName, WS_OVERLAPPEDWINDOW, 560, 140, 800, 800, NULL, (HMENU)NULL, hInstance, NULL);
+	hWnd = CreateWindow(lpszClass, lpszWindowName, WS_OVERLAPPEDWINDOW, 560, 140, 800, 1000, NULL, (HMENU)NULL, hInstance, NULL);
 	ShowWindow(hWnd, nCmdShow);
 	UpdateWindow(hWnd);
 
@@ -128,11 +126,11 @@ int  WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 }
 
 player* p = new player(100, 100);
-ui* u = new ui;
+ui* UI = new ui;
+std::vector<player*> players; // p로 움직여서 보내고 데이터 받아와서 3명의 플레이어 벡터에 저장
 std::vector<bullet*> bullets;
 std::vector<item*> items;
 std::vector<obstacle*> obstacles;
-auto lastCreateTime = std::chrono::high_resolution_clock::now();
 
 static TCHAR text[100];
 int GameOverCnt{};
@@ -150,12 +148,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 	PAINTSTRUCT ps;
 	HDC	hdc, mdc, mapdc;
 	static HBITMAP hBitmap, map;
-	static HBRUSH BLACK, WHITE;
 
 	switch (iMessage) {
 	case WM_CREATE:
 		CreateObstacles(); // 장애물 생성 함수
-		SetTimer(hWnd, 1, 32, NULL); // 현재 업데이트되는 프레임 수에 따라 객체 움직임 속도가 달라짐
+		SetTimer(hWnd, 1, 16, NULL); // 현재 업데이트되는 프레임 수에 따라 객체 움직임 속도가 달라짐
 
 		ret = recv(CLIENT, (char*)&myClientInfo, sizeof(sc_login), 0);
 		ClientID = myClientInfo.id;
@@ -171,14 +168,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 		SelectObject(mdc, hBitmap);
 		SelectObject(mapdc, map);
 
-		////TextOut(hdc, 450, 400, L"GAME OVER", 9);
-		DrawAll(mapdc);
+		DrawAllObjects(mapdc);
 		StretchBlt(mdc, 0, 0, 800, 800, mapdc, 0, 0, 1200, 1200, SRCCOPY);
-		u->DrawHeat(mdc, p->GetHeat());
-		u->DrawHP(mdc, p->GetHP());
-		u->DrawTimer(mdc, remainingTime);
-		u->DrawScore(mdc, p->GetScore());
-		u->DrawName(mdc, p->GetID());
+		UI->DrawUI(mdc, p, remainingTime);
 		BitBlt(hdc, 0, 0, 800, 800, mdc, 0, 0, SRCCOPY);
 
 		DeleteDC(mapdc);
@@ -191,28 +183,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 		if (wParam == VK_ESCAPE)
 			PostQuitMessage(0);
 		else if (wParam == VK_UP) {
-			sendKEY(CLIENT, 'U');
 			p->SetDirX(0);
 			p->SetDirY(-1);
 		}
 		else if (wParam == VK_LEFT) {
-			sendKEY(CLIENT, 'L');
 			p->SetDirX(-1);
 			p->SetDirY(0);
 		}
 		else if (wParam == VK_DOWN) {
-			sendKEY(CLIENT, 'D');
 			p->SetDirX(0);
 			p->SetDirY(1);
 		}
 		else if (wParam == VK_RIGHT) {
-			sendKEY(CLIENT, 'R');
 			p->SetDirX(1);
 			p->SetDirY(0);
 		}
 		else if (wParam == 'D' && p->GetHeat() < 10)
 		{
-			sendKEY(CLIENT, 'A');
 			bullets.emplace_back(new bullet(p->GetPosX() + p->GetFDirX() * 25, p->GetPosY() + p->GetFDirY() * 25, p->GetFDirX(), p->GetFDirY()));
 			p->SetHeat(p->GetHeat() + 1);
 			p->SetHeatCount(3.0);
@@ -240,36 +227,21 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 		break;
 	case WM_TIMER:
 		frame_time = GetFrameTime();
+		remainingTime -= frame_time;
+		item_time += frame_time;
+		if (item_time > CREATE_ITEM_TIME) {
+			CreateItem();
+			item_time -= CREATE_ITEM_TIME;
+		}
 
 		GameUpdate(); // 게임 상태 업데이트
 
-		{ // 괄호 없으면 컴파일 안됨
-			auto now = std::chrono::high_resolution_clock::now();
-			std::chrono::duration<double> elapsed = now - lastCreateTime;
-
-			if (elapsed.count() >= 3.0) {
-				CreateItem(); // 아이템 생성
-				lastCreateTime = now;
-			}
-
-			std::chrono::duration<double> elapsedTotal = now - gameStartTime;
-
-			// 게임 시작 이후 총 경과한 시간을 계산하여 남은 시간을 업데이트
-			remainingTime = 120 - static_cast<int>(std::chrono::duration_cast<std::chrono::seconds>(elapsedTotal).count());
-			if (remainingTime <= 0) {
-				// 시간이 다 됐을 때 실행할 코드
-				GameOverCnt++;
-				if (GameOverCnt == 1) {
-					MessageBox(hWnd, L"시간이 다 되었습니다!", L"게임 오버", MB_OK);
-					PostQuitMessage(0);
-				}
-				if (GameOverCnt > 1) {
-					break;
-				}
-			}
-
-			InvalidateRect(hWnd, NULL, false);
+		if (remainingTime < 0) {
+			MessageBox(hWnd, L"시간이 다 되었습니다!", L"게임 오버", MB_OK);
+			PostQuitMessage(0);
 		}
+
+		InvalidateRect(hWnd, NULL, false);
 
 		break;
 	case WM_DESTROY:
@@ -335,9 +307,11 @@ void CreateObstacles()
 
 }
 
-void DrawAll(HDC hdc)
+void DrawAllObjects(HDC hdc)
 {
-	p->Draw(hdc);
+	//p->Draw(hdc);
+	for (auto& player : players)
+		player->Draw(hdc);
 	for (auto& obstacle : obstacles)
 		obstacle->draw(hdc);
 	for (auto& b : bullets)
