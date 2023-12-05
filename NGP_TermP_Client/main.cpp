@@ -32,24 +32,7 @@ double remainingTime = 120.0;
 #define BUFFERSIZE 1024
 #define SERVERIP "127.0.0.1"
 #define SERVERPORT 9000
-player* p = new player(100, 100);
-ui* UI = new ui;
-std::vector<player*> players; // p로 움직여서 보내고 데이터 받아와서 3명의 플레이어 벡터에 저장
-std::vector<bullet*> bullets;
-std::vector<item*> items;
-std::vector<obstacle*> obstacles;
 
-static TCHAR text[100];
-int GameOverCnt{};
-
-char ClientID{};
-struct sc_login {
-	char size;
-	char type;
-	char id;
-};
-sc_login myClientInfo;
-int ret;
 
 struct cs_move {
 	char size;
@@ -101,25 +84,6 @@ DWORD WINAPI ClientMain(LPVOID arg)
 	retval = connect(CLIENT, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
 	if (retval == SOCKET_ERROR) err_quit("connect()");
 
-	
-	ret = recv(CLIENT, (char*)&myClientInfo, sizeof(sc_login), 0);
-	ClientID = myClientInfo.id;
-	p->SetID((int)ClientID);
-
-	if (ClientID == 1) {
-		//색깔 지정
-	}
-	else if (ClientID == 2) {
-
-	}
-	else if (ClientID == 3) {
-
-	}
-	sc_InitPos posSet;
-	ret = recv(CLIENT, (char*)&posSet, sizeof(sc_InitPos), 0);
-	p->SetPosX(posSet.x);
-	p->SetPosY(posSet.y);
-
 	/*closesocket(client_sock);*/
 
 	return 0;
@@ -157,7 +121,7 @@ int  WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 	RegisterClassEx(&WndClass);
 
 	//--- 크기 변경 가능 (기존 (1024, 768))
-	hWnd = CreateWindow(lpszClass, lpszWindowName, WS_OVERLAPPEDWINDOW, 560, 140, 800, 1000, NULL, (HMENU)NULL, hInstance, NULL);
+	hWnd = CreateWindow(lpszClass, lpszWindowName, WS_OVERLAPPEDWINDOW, 560, 0, 800, 1000, NULL, (HMENU)NULL, hInstance, NULL);
 	ShowWindow(hWnd, nCmdShow);
 	UpdateWindow(hWnd);
 
@@ -168,7 +132,24 @@ int  WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 	return Message.wParam;
 }
 
+player* p = new player(100, 100);
+ui* UI = new ui;
+std::vector<player*> players; // p로 움직여서 보내고 데이터 받아와서 3명의 플레이어 벡터에 저장
+std::vector<bullet*> bullets;
+std::vector<item*> items;
+std::vector<obstacle*> obstacles;
 
+static TCHAR text[100];
+int GameOverCnt{};
+
+char ClientID{};
+struct sc_login {
+	char size;
+	char type;
+	char id;
+};
+sc_login myClientInfo;
+int ret;
 LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 {
 	PAINTSTRUCT ps;
@@ -180,22 +161,38 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 		CreateObstacles(); // 장애물 생성 함수
 		SetTimer(hWnd, 1, 16, NULL); // 현재 업데이트되는 프레임 수에 따라 객체 움직임 속도가 달라짐
 
-		
+		ret = recv(CLIENT, (char*)&myClientInfo, sizeof(sc_login), 0);
+		ClientID = myClientInfo.id;
+		p->SetID((int)ClientID);
+
+		if (ClientID == 1) {
+			//색깔 지정
+		}
+		else if (ClientID == 2) {
+
+		}
+		else if (ClientID == 3) {
+
+		}
+		sc_InitPos posSet;
+		ret = recv(CLIENT, (char*)&posSet, sizeof(sc_InitPos), 0);
+		p->SetPosX(posSet.x);
+		p->SetPosY(posSet.y);
 
 		break;
 	case WM_PAINT:
 		hdc = BeginPaint(hWnd, &ps);
 		mdc = CreateCompatibleDC(hdc);
 		mapdc = CreateCompatibleDC(mdc);
-		hBitmap = CreateCompatibleBitmap(hdc, 800, 800);
+		hBitmap = CreateCompatibleBitmap(hdc, 800, 1000);
 		map = CreateCompatibleBitmap(hdc, 1200, 1200);
 		SelectObject(mdc, hBitmap);
 		SelectObject(mapdc, map);
 
 		DrawAllObjects(mapdc);
 		StretchBlt(mdc, 0, 0, 800, 800, mapdc, 0, 0, 1200, 1200, SRCCOPY);
-		UI->DrawUI(mdc, p, remainingTime);
-		BitBlt(hdc, 0, 0, 800, 800, mdc, 0, 0, SRCCOPY);
+		UI->DrawUI(mdc, p, remainingTime, p->GetID());
+		BitBlt(hdc, 0, 0, 800, 1000, mdc, 0, 0, SRCCOPY);
 
 		DeleteDC(mapdc);
 		DeleteDC(mdc);
@@ -258,8 +255,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 			item_time -= CREATE_ITEM_TIME;
 		}
 
-
-		
 		GameUpdate(); // 게임 상태 업데이트
 
 		if (remainingTime < 0) {

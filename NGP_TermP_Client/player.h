@@ -17,7 +17,7 @@ private:
 	int speed;
 public:
 	player(int x, int y) : gameObject(x, y, PLAYER_SIZE), // 부모 클래스 생성자 호출
-		ID(0), dx(0), dy(0), fdx(1), fdy(0),
+		ID(1), dx(0), dy(0), fdx(1), fdy(0),
 		color(RGB(100, 255, 100)), power(10),
 		heat(0), score(0), HP(100), speed(5)
 	{};
@@ -49,6 +49,7 @@ public:
 	void SetScore(int newScore) { score = newScore; }
 	void SetHP(int newHP) { HP = newHP; }
 	void SetSpeed(int newSpeed) { speed = newSpeed; }
+	void SetColor(COLORREF newColor) { color = newColor; }
 
 	void UpdateHeat();
 	void UpdateMove(bool collide);
