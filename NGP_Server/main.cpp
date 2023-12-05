@@ -26,6 +26,8 @@ void send_start_game_packet(SOCKET* client_socket, int client_id);
 void send_move_packet(SOCKET* client_socket, int client_id);
 void process_client(int client_id, char* p);
 
+void send_Init_Pos(SOCKET* client_socket, char client_id);
+
 int main(int argc, char* argv[])
 {
 	int retval;		// 오류 검출 변수
@@ -87,7 +89,14 @@ int main(int argc, char* argv[])
 	hThread = CreateThread(NULL, 0, sendPacket, NULL, 0, NULL);
 	if (hThread == NULL) { std::cout << "쓰레드 생성 에러" << std::endl; }
 	SetEvent(hCalculateEvent);
+		//반복문, 클라이언트가 모두 죽었는가?? 한명 남았는가ㅣ?
+		//반복문인 트루면
 
+	//Send 모두 플레이어에게 등수 보내주기
+
+	while (thread_count > 1) {
+		
+	}
 	
 	closesocket(sock);
 	WSACleanup();
@@ -140,12 +149,14 @@ DWORD WINAPI clientThread(LPVOID arg)
 	SOCKET& client_sock = player->c_socket;
 	char* buf;
 	int len;
-	//int id = player->m_id;
 	char id = thread_count;
+	player->m_id = id;
 	buf = player->m_buf;
 	len = BUFSIZE;
 
-	send_login_ok_packet(&client_sock, id);
+	send_login_ok_packet(&client_sock, id);//id부여
+	send_Init_Pos(&client_sock, id);//초기위치부여
+	
 	for (auto& cl : clients) {
 		if (cl.second.m_id == id) continue;
 		send_other_info_packet(&cl.second.c_socket, cl.second.m_id, id);
@@ -196,13 +207,8 @@ DWORD WINAPI sendPacket(LPVOID arg) {
 void gameStart()
 {
 	std::cout << "게임시작" << std::endl;
-	// 정보 초기화
-	clients[1].pos_x = 150;
-	clients[1].pos_y = 150;
-	clients[2].pos_x = 550;
-	clients[2].pos_y = 150;
-	clients[3].pos_x = 300;
-	clients[3].pos_y = 400;
+	//이때 시간을 초기화 하여 보낸다.
+
 
 	for (auto& cl : clients) {
 		send_start_game_packet(&cl.second.c_socket, cl.second.m_id);
@@ -211,10 +217,38 @@ void gameStart()
 	start_game = true;
 }
 
+void send_Init_Pos(SOCKET* client_socket, char client_id)
+{
+	sc_InitPos packet;
+	packet.size = sizeof(packet);
+	packet.type = 111;
+	if (client_id == 1) {
+		clients[1].pos_y = 100;
+		clients[1].pos_x = 200;
+		packet.y = 100;
+		packet.x = 200;
+	}
+	else if (client_id == 2) {
+		clients[2].pos_y = 600;
+		clients[2].pos_x = 600;
+		packet.y = 600;
+		packet.x = 600;
+	}
+	else if (client_id == 3) {
+		clients[3].pos_y = 100;
+		clients[3].pos_x = 700;
+		packet.y = 100;
+		packet.x = 700;
+	}
+
+	send(*client_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
+}
+
+
 void send_login_ok_packet(SOCKET* client_socket, char client_id)
 {
 	sc_login packet;
-	std::cout << sizeof(packet);
+	//std::cout << sizeof(packet);
 	packet.size = sizeof(packet);
 	packet.type = SC_P_LOGIN;
 	packet.id = client_id;

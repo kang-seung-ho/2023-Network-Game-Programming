@@ -40,6 +40,13 @@ struct cs_move {
 	char	direction;			// 0 : up, 1: down, 2:left, 3:right
 };
 
+struct sc_InitPos {
+	int type;
+	int size;
+	int x;
+	int y;
+};
+
 /*
 struct cs_attack {
 	char size;
@@ -157,6 +164,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 		ret = recv(CLIENT, (char*)&myClientInfo, sizeof(sc_login), 0);
 		ClientID = myClientInfo.id;
 		p->SetID((int)ClientID);
+
+		if (ClientID == 1) {
+			//»ö±ò ÁöÁ¤
+		}
+		else if (ClientID == 2) {
+		
+		}
+		else if (ClientID == 3) {
+			
+		}
+		sc_InitPos posSet;
+		ret = recv(CLIENT, (char*)&posSet, sizeof(sc_InitPos), 0);
+		p->SetPosX(posSet.x);
+		p->SetPosY(posSet.y);
 
 		break;
 	case WM_PAINT:

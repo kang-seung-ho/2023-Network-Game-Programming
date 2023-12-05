@@ -23,6 +23,13 @@ struct cs_move {
 	char	direction;			// 0 : up, 1: down, 2:left, 3:right
 };
 
+struct sc_InitPos {
+	int type;
+	int size;
+	int x;
+	int y;
+};
+
 /*
 struct cs_attack {
 	char size;
