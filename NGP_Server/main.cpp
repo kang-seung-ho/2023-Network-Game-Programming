@@ -121,12 +121,12 @@ DWORD WINAPI clientThread(LPVOID arg)
 
 	//send_login_ok_packet(&client_sock, id);//id부여
 	send_Init_Pos(&client_sock);//초기위치부여
-	//while (true) {
-	//	if (thread_count == 3) {
-	//		gameStart();
-	//		break;
-	//	}
-	//}
+	while (true) {
+		if (thread_count == 3) {
+			gameStart();
+			break;
+		}
+	}
 	
 	/*for (auto& cl : clients) {
 		if (cl.second.m_id == id) continue;
@@ -196,18 +196,21 @@ void send_Init_Pos(SOCKET* client_socket)
 	if (thread_count == 1) {
 		clients[1].pos_y = 100;
 		clients[1].pos_x = 200;
+		packet.id = 1;
 		packet.y = 100;
 		packet.x = 200;
 	}
 	else if (thread_count == 2) {
 		clients[2].pos_y = 600;
 		clients[2].pos_x = 600;
+		packet.id = 2;
 		packet.y = 600;
 		packet.x = 600;
 	}
 	else if (thread_count == 3) {
 		clients[3].pos_y = 100;
 		clients[3].pos_x = 700;
+		packet.id = 3;
 		packet.y = 100;
 		packet.x = 700;
 	}

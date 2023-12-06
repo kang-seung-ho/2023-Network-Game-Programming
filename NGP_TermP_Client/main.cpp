@@ -63,7 +63,7 @@ DWORD WINAPI ClientMain(LPVOID arg)
 {
 	int retval;
 	char buffer[BUFFERSIZE];
-	char buf[48];
+	char recv_buf[48];
 
 	// 소켓 생성
 	client_sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -97,16 +97,17 @@ DWORD WINAPI ClientMain(LPVOID arg)
 	//p->SetPosY(posSet.y);
 
 	while (true) {
-		retval = recv(client_sock, buf, sizeof(buf), 0);
+		retval = recv(client_sock, recv_buf, sizeof(recv_buf), 0);
 		if (retval == SOCKET_ERROR) { err_display("recv()");  return 0; }
-		char* c = buf;
-		while (c < buf + retval) {
-			char packet_size = *c; // 첫 1바이트는 패킷 크기
-			char packet_type = *(c + 1); // 그 다음 바이트는 패킷 타입
-			if (packet_size <= 0) break;
+		char* buf = recv_buf;
+		//while (buf < recv_buf + retval) {
+			char packet_size = *buf; // 첫 바이트는 패킷 크기
+			char packet_type = *(buf + 1); // 그 다음 바이트는 패킷 타입
+			//if (packet_size <= 0) break;
 			switch (packet_type) {
 			case SC_P_INIT: {
-				sc_InitPos* packet = (sc_InitPos*)(c);
+				//player* temp = new player(0, 0);
+				sc_InitPos* packet = (sc_InitPos*)(buf);
 				p->SetID(packet->id);
 				p->SetPosX(packet->x);
 				p->SetPosY(packet->y);
@@ -116,7 +117,7 @@ DWORD WINAPI ClientMain(LPVOID arg)
 				break;
 			}
 			case SC_P_OTHER_INFO: {
-				sc_move* packet = reinterpret_cast<sc_move*>(c);
+				sc_move* packet = reinterpret_cast<sc_move*>(buf);
 				// 다른 클라이언트를 그려주는 객체에 id부여
 				// 다른 클라이언트 객체.id = packet->id;
 				packet->id;
@@ -129,13 +130,13 @@ DWORD WINAPI ClientMain(LPVOID arg)
 			}
 
 			case SC_P_MOVE: {
-				sc_move* packet = reinterpret_cast<sc_move*> (c);
+				sc_move* packet = reinterpret_cast<sc_move*> (buf);
 				// 작업
 				break;
 			}
 
 			case SC_P_DEAD: {
-				sc_dead* packet = reinterpret_cast<sc_dead*>(c);
+				sc_dead* packet = reinterpret_cast<sc_dead*>(buf);
 				// 해당 id에 해당하는 id지워주기
 				break;
 			}
@@ -144,20 +145,19 @@ DWORD WINAPI ClientMain(LPVOID arg)
 				break;
 			}
 			case SC_P_BULLET: {
-				sc_bullet* packet = reinterpret_cast<sc_bullet*>(c);
+				sc_bullet* packet = reinterpret_cast<sc_bullet*>(buf);
 				//int b_id = packet->id;
 				// ~
 				break;
 			}
 			case SC_P_HIT: {
-				sc_hit* packet = reinterpret_cast<sc_hit*> (c);
+				sc_hit* packet = reinterpret_cast<sc_hit*> (buf);
 				//int p_id = packet->id;
 				//std::cout << "hit" << p_id << endl;
 				// 나의 id면 hp유아이에서 체력 한칸을 없애주자
 				break;
 			}
-				c = c + packet_size;
-			}
+			buf = buf + packet_size;
 
 		}
 
