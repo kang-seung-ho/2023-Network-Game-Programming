@@ -15,8 +15,6 @@ const char SC_P_BULLET = 8;
 const char SC_P_HIT = 9;
 const char SC_P_INIT = 10;
 
-//#pragma pack(push, 1)
-
 // client -> server
 struct cs_move {
 	char size;
@@ -96,5 +94,3 @@ struct sc_hit {
 	char id;
 	char bullet_id;
 };
-
-//#pragma pack(pop)

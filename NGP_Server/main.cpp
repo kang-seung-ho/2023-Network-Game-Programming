@@ -122,9 +122,14 @@ DWORD WINAPI clientThread(LPVOID arg)
 	//send_login_ok_packet(&client_sock, id);//id부여
 	
 	while (true) {
+		int sentInitcheck{};
 		if (thread_count == 3) {
 			send_Init_Pos(&client_sock);//모든 클라가 연결되면 모든 클라위치 부여 및 전송
+			sentInitcheck = 1;
 			//gameStart();
+		}
+		if (thread_count == 3 && sentInitcheck == 1) {
+			send_start_game_packet(&client_sock, id);
 			break;
 		}
 	}

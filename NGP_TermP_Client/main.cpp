@@ -114,6 +114,7 @@ DWORD WINAPI ClientMain(LPVOID arg)
 				temp->SetColor(packet->color);
 				players.emplace_back(temp);
 
+				remainingTime = 120;
 				//my_id = packet->id;
 				//std::cout << my_id << std::endl;
 				break;
@@ -123,11 +124,13 @@ DWORD WINAPI ClientMain(LPVOID arg)
 				// 다른 클라이언트를 그려주는 객체에 id부여
 				// 다른 클라이언트 객체.id = packet->id;
 				packet->id;
+				
 				break;
 			}
 			case SC_P_GAME_START: {
 				// 이제 렌더링을 시작
 				//start_game = true;
+				
 				break;
 			}
 
@@ -376,7 +379,7 @@ void CreateObstacles()
 
 void DrawAllObjects(HDC hdc)
 {
-	p->Draw(hdc);
+	//p->Draw(hdc);
 	for (auto& player : players)
 		player->Draw(hdc);
 	for (auto& obstacle : obstacles)
