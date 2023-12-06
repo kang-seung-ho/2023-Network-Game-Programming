@@ -72,9 +72,9 @@ int main(int argc, char* argv[])
 		addrlen = sizeof(client_addr);
 		client_sock = accept(sock, (SOCKADDR*)&client_addr, &addrlen);
 		if (client_sock == INVALID_SOCKET) { err_display("ACCEPT()"); break; }
-		int id = thread_count + 1;
+		int id = thread_count;
 		Player* player = new Player(client_sock, id);
-		clients.insert(std::make_pair(thread_count + 1, *player));
+		clients.insert(std::make_pair(thread_count, *player));
 
 		// Thread 생성후 소켓 전달
 		hThread = CreateThread(NULL, 0, clientThread, (LPVOID)player, 0, NULL);
@@ -84,7 +84,6 @@ int main(int argc, char* argv[])
 	}
 
 	// 3명이 접속 완료
-	gameStart();
 	HANDLE hSend;
 	hThread = CreateThread(NULL, 0, sendPacket, NULL, 0, NULL);
 	if (hThread == NULL) { std::cout << "쓰레드 생성 에러" << std::endl; }
@@ -104,41 +103,6 @@ int main(int argc, char* argv[])
 }
 
 
-void err_display(const char* msg)
-{
-	LPVOID lpMsgBuf;
-
-	FormatMessage(
-		FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
-		NULL,
-		WSAGetLastError(),
-		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-		(LPTSTR)&lpMsgBuf,
-		0,
-		NULL);
-
-	std::cout << "[" << msg << "] " << (char*)lpMsgBuf << std::endl;
-	LocalFree(lpMsgBuf);
-}
-
-void err_quit(const char* msg)
-{
-	LPVOID lpMsgBuf;
-
-	FormatMessage(
-		FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
-		NULL,
-		WSAGetLastError(),
-		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-		(LPTSTR)&lpMsgBuf,
-		0,
-		NULL);
-
-	MessageBox(NULL, (LPTSTR)lpMsgBuf, (LPTSTR)msg, MB_ICONERROR);
-	LocalFree(lpMsgBuf);
-	exit(1);
-}
-
 DWORD WINAPI clientThread(LPVOID arg)
 {
 
@@ -149,7 +113,7 @@ DWORD WINAPI clientThread(LPVOID arg)
 	SOCKET& client_sock = player->c_socket;
 	char* buf;
 	int len;
-	char id = thread_count;
+	char id = (char)thread_count;
 	player->m_id = id;
 	std::cout << player->m_id << std::endl;
 	buf = player->m_buf;
@@ -157,6 +121,12 @@ DWORD WINAPI clientThread(LPVOID arg)
 
 	send_login_ok_packet(&client_sock, id);//id부여
 	send_Init_Pos(&client_sock, id);//초기위치부여
+	while (true) {
+		if (thread_count == 3) {
+			gameStart();
+			break;
+		}
+	}
 	
 	for (auto& cl : clients) {
 		if (cl.second.m_id == id) continue;
@@ -222,7 +192,7 @@ void send_Init_Pos(SOCKET* client_socket, char client_id)
 {
 	sc_InitPos packet;
 	packet.size = sizeof(packet);
-	packet.type = 111;
+	packet.type = SC_P_INIT;
 	if (client_id == 1) {
 		clients[1].pos_y = 100;
 		clients[1].pos_x = 200;
@@ -242,7 +212,7 @@ void send_Init_Pos(SOCKET* client_socket, char client_id)
 		packet.x = 700;
 	}
 	std::cout << packet.y << ", " << packet.x << std::endl;
-	send(*client_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
+	send(*client_socket, (char*)(&packet), sizeof(packet), 0);
 }
 
 
@@ -323,4 +293,39 @@ void process_client(int client_id, char* p)
 		break;
 	}
 	}
+}
+
+void err_display(const char* msg)
+{
+	LPVOID lpMsgBuf;
+
+	FormatMessage(
+		FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
+		NULL,
+		WSAGetLastError(),
+		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+		(LPTSTR)&lpMsgBuf,
+		0,
+		NULL);
+
+	std::cout << "[" << msg << "] " << (char*)lpMsgBuf << std::endl;
+	LocalFree(lpMsgBuf);
+}
+
+void err_quit(const char* msg)
+{
+	LPVOID lpMsgBuf;
+
+	FormatMessage(
+		FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
+		NULL,
+		WSAGetLastError(),
+		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+		(LPTSTR)&lpMsgBuf,
+		0,
+		NULL);
+
+	MessageBox(NULL, (LPTSTR)lpMsgBuf, (LPTSTR)msg, MB_ICONERROR);
+	LocalFree(lpMsgBuf);
+	exit(1);
 }

@@ -13,6 +13,7 @@ const char SC_P_MOVE = 5;
 const char SC_P_ITEM = 6;
 const char SC_P_BULLET = 8;
 const char SC_P_HIT = 9;
+const char SC_P_INIT = 10;
 
 #pragma pack(push, 1)
 
@@ -26,6 +27,7 @@ struct cs_move {
 struct sc_InitPos {
 	int type;
 	int size;
+	char id;
 	int x;
 	int y;
 };
