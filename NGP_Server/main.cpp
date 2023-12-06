@@ -120,10 +120,11 @@ DWORD WINAPI clientThread(LPVOID arg)
 	len = BUFSIZE;
 
 	//send_login_ok_packet(&client_sock, id);//id부여
-	send_Init_Pos(&client_sock);//초기위치부여
+	
 	while (true) {
 		if (thread_count == 3) {
-			gameStart();
+			send_Init_Pos(&client_sock);//모든 클라가 연결되면 모든 클라위치 부여 및 전송
+			//gameStart();
 			break;
 		}
 	}
@@ -190,32 +191,41 @@ void gameStart()
 
 void send_Init_Pos(SOCKET* client_socket)
 {
-	sc_InitPos packet;
+	sc_InitPlayer packet;
 	packet.size = sizeof(packet);
 	packet.type = SC_P_INIT;
-	if (thread_count == 1) {
-		clients[1].pos_y = 100;
-		clients[1].pos_x = 200;
-		packet.id = 1;
-		packet.y = 100;
-		packet.x = 200;
-	}
-	else if (thread_count == 2) {
-		clients[2].pos_y = 600;
-		clients[2].pos_x = 600;
-		packet.id = 2;
-		packet.y = 600;
-		packet.x = 600;
-	}
-	else if (thread_count == 3) {
-		clients[3].pos_y = 100;
-		clients[3].pos_x = 700;
-		packet.id = 3;
-		packet.y = 100;
-		packet.x = 700;
-	}
-	std::cout << packet.y << ", " << packet.x << std::endl;
+
+	clients[1].pos_y = 100;
+	clients[1].pos_x = 100;
+	clients[1].m_id = 1;
+
+	packet.id = 1;
+	packet.y = 100;
+	packet.x = 100;
+	packet.color = RGB(255, 0, 0);
 	send(*client_socket, (char*)(&packet), sizeof(packet), 0);
+
+	clients[2].pos_y = 1100;
+	clients[2].pos_x = 100;
+	clients[2].m_id = 2;
+	
+	packet.id = 2;
+	packet.y = 1100;
+	packet.x = 100;
+	packet.color = RGB(0, 255, 0);
+	send(*client_socket, (char*)(&packet), sizeof(packet), 0);
+
+	clients[3].pos_y = 100;
+	clients[3].pos_x = 1100;
+	clients[3].m_id = 3;
+
+	packet.id = 3;
+	packet.y = 100;
+	packet.x = 1100;
+	packet.color = RGB(0, 0, 255);
+	send(*client_socket, (char*)(&packet), sizeof(packet), 0);
+
+	//send(*client_socket, (char*)(&packet), sizeof(packet), 0);
 }
 
 

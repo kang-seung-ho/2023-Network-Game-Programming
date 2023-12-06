@@ -24,12 +24,13 @@ struct cs_move {
 	char	direction;			// 0 : up, 1: down, 2:left, 3:right
 };
 
-struct sc_InitPos {
+struct sc_InitPlayer {
 	char size;
 	char type;
 	char id;
 	int x;
 	int y;
+	COLORREF color;
 };
 
 /*

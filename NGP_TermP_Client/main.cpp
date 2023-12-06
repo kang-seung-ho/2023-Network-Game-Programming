@@ -106,11 +106,13 @@ DWORD WINAPI ClientMain(LPVOID arg)
 			//if (packet_size <= 0) break;
 			switch (packet_type) {
 			case SC_P_INIT: {
-				//player* temp = new player(0, 0);
-				sc_InitPos* packet = (sc_InitPos*)(buf);
-				p->SetID(packet->id);
-				p->SetPosX(packet->x);
-				p->SetPosY(packet->y);
+				player* temp = new player(0, 0);
+				sc_InitPlayer* packet = (sc_InitPlayer*)(buf);
+				temp->SetID(packet->id);
+				temp->SetPosX(packet->x);
+				temp->SetPosY(packet->y);
+				temp->SetColor(packet->color);
+				players.emplace_back(temp);
 
 				//my_id = packet->id;
 				//std::cout << my_id << std::endl;
@@ -232,7 +234,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 
 		DrawAllObjects(mapdc);
 		StretchBlt(mdc, 0, 0, 800, 800, mapdc, 0, 0, 1200, 1200, SRCCOPY);
-		UI->DrawUI(mdc, p, remainingTime, p->GetID());
+		for (auto& player : players) {
+			UI->DrawUI(mdc, player, remainingTime, player->GetID());
+		}
+		//UI->DrawUI(mdc, p, remainingTime, p->GetID());
 		BitBlt(hdc, 0, 0, 800, 1000, mdc, 0, 0, SRCCOPY);
 
 		DeleteDC(mapdc);
