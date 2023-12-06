@@ -12,6 +12,7 @@
 #include "item.h"
 #include "obstacle.h"
 #include "ui.h"
+#include "Protocol.h"
 
 #include "Common.h"
 
@@ -33,47 +34,40 @@ double remainingTime = 120.0;
 #define SERVERIP "127.0.0.1"
 #define SERVERPORT 9000
 
+player* p = new player(100, 100);
+ui* UI = new ui;
+std::vector<player*> players; // p로 움직여서 보내고 데이터 받아와서 3명의 플레이어 벡터에 저장
+std::vector<bullet*> bullets;
+std::vector<item*> items;
+std::vector<obstacle*> obstacles;
 
-struct cs_move {
-	char size;
-	char	type;
-	char	direction;			// 0 : up, 1: down, 2:left, 3:right
-};
+static TCHAR text[100];
+int GameOverCnt{};
 
-struct sc_InitPos {
-	int type;
-	int size;
-	int x;
-	int y;
-};
+char ClientID{};
+sc_login myClientInfo;
+int ret;
 
-/*
-struct cs_attack {
-	char size;
-	char type;
-	float aim_x;
-	float aim_y;
-};
-*/
-#define KEY 1
-void sendKEY(SOCKET client_sock, char key)
-{
-	cs_move a;
-	a.size = sizeof(cs_move);
-	a.type = KEY;
-	int retval = send(client_sock, (char*)&a, sizeof(cs_move), 0);
-	if (client_sock == INVALID_SOCKET) err_quit("send()");
-}
 
-SOCKET CLIENT;
+//void sendKEY(SOCKET client_sock, char key)
+//{
+//	cs_move a;
+//	a.size = sizeof(cs_move);
+//	a.type = KEY;
+//	int retval = send(client_sock, (char*)&a, sizeof(cs_move), 0);
+//	if (client_sock == INVALID_SOCKET) err_quit("send()");
+//}
+
+SOCKET client_sock;
 DWORD WINAPI ClientMain(LPVOID arg)
 {
 	int retval;
 	char buffer[BUFFERSIZE];
+	char buf[48];
 
 	// 소켓 생성
-	CLIENT = socket(AF_INET, SOCK_STREAM, 0);
-	if (CLIENT == INVALID_SOCKET) err_quit("socket()");
+	client_sock = socket(AF_INET, SOCK_STREAM, 0);
+	if (client_sock == INVALID_SOCKET) err_quit("socket()");
 
 	// connect()
 	struct sockaddr_in serveraddr;
@@ -81,11 +75,94 @@ DWORD WINAPI ClientMain(LPVOID arg)
 	serveraddr.sin_family = AF_INET;
 	serveraddr.sin_addr.s_addr = inet_addr(SERVERIP);
 	serveraddr.sin_port = htons(SERVERPORT);
-	retval = connect(CLIENT, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
+	retval = connect(client_sock, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
 	if (retval == SOCKET_ERROR) err_quit("connect()");
 
-	/*closesocket(client_sock);*/
+	//retval = recv(client_sock, (char*)&myClientInfo, sizeof(sc_login), 0);
+	//ClientID = myClientInfo.id;
+	//p->SetID((int)ClientID);
 
+	////if (ClientID == 1) {
+	////	//색깔 지정
+	////}
+	////else if (ClientID == 2) {
+
+	////}
+	////else if (ClientID == 3) {
+
+	////}
+	//sc_InitPos posSet;
+	//retval = recv(client_sock, (char*)&posSet, sizeof(sc_InitPos), 0);
+	//p->SetPosX(posSet.x);
+	//p->SetPosY(posSet.y);
+
+	while (true) {
+		retval = recv(client_sock, buf, sizeof(buf), 0);
+		if (retval == SOCKET_ERROR) { err_display("recv()");  return 0; }
+		char* c = buf;
+		while (c < buf + retval) {
+			char packet_size = *c; // 첫 1바이트는 패킷 크기
+			char packet_type = *(c + 1); // 그 다음 바이트는 패킷 타입
+			if (packet_size <= 0) break;
+			switch (packet_type) {
+			case SC_P_LOGIN: {
+				sc_InitPos* packet = reinterpret_cast<sc_InitPos*>(c);
+				p->SetID(packet->id);
+				p->SetPosX(packet->x);
+				p->SetPosY(packet->y);
+
+				//my_id = packet->id;
+				//std::cout << my_id << std::endl;
+				break;
+			}
+			case SC_P_OTHER_INFO: {
+				sc_move* packet = reinterpret_cast<sc_move*>(c);
+				// 다른 클라이언트를 그려주는 객체에 id부여
+				// 다른 클라이언트 객체.id = packet->id;
+				packet->id;
+				break;
+			}
+			case SC_P_GAME_START: {
+				// 이제 렌더링을 시작
+				//start_game = true;
+				break;
+			}
+
+			case SC_P_MOVE: {
+				sc_move* packet = reinterpret_cast<sc_move*> (c);
+				// 작업
+				break;
+			}
+
+			case SC_P_DEAD: {
+				sc_dead* packet = reinterpret_cast<sc_dead*>(c);
+				// 해당 id에 해당하는 id지워주기
+				break;
+			}
+			case SC_P_ITEM: {
+
+				break;
+			}
+			case SC_P_BULLET: {
+				sc_bullet* packet = reinterpret_cast<sc_bullet*>(c);
+				//int b_id = packet->id;
+				// ~
+				break;
+			}
+			case SC_P_HIT: {
+				sc_hit* packet = reinterpret_cast<sc_hit*> (c);
+				//int p_id = packet->id;
+				//std::cout << "hit" << p_id << endl;
+				// 나의 id면 hp유아이에서 체력 한칸을 없애주자
+				break;
+			}
+						 c = c + packet_size;
+			}
+
+		}
+
+	}
+	//closesocket(client_sock);
 	return 0;
 }
 
@@ -121,7 +198,7 @@ int  WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 	RegisterClassEx(&WndClass);
 
 	//--- 크기 변경 가능 (기존 (1024, 768))
-	hWnd = CreateWindow(lpszClass, lpszWindowName, WS_OVERLAPPEDWINDOW, 560, 0, 800, 1000, NULL, (HMENU)NULL, hInstance, NULL);
+	hWnd = CreateWindow(lpszClass, lpszWindowName, WS_OVERLAPPEDWINDOW, 560, 0, WINDOW_WIDTH, WINDOW_HEIGHT, NULL, (HMENU)NULL, hInstance, NULL);
 	ShowWindow(hWnd, nCmdShow);
 	UpdateWindow(hWnd);
 
@@ -132,24 +209,6 @@ int  WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 	return Message.wParam;
 }
 
-player* p = new player(100, 100);
-ui* UI = new ui;
-std::vector<player*> players; // p로 움직여서 보내고 데이터 받아와서 3명의 플레이어 벡터에 저장
-std::vector<bullet*> bullets;
-std::vector<item*> items;
-std::vector<obstacle*> obstacles;
-
-static TCHAR text[100];
-int GameOverCnt{};
-
-char ClientID{};
-struct sc_login {
-	char size;
-	char type;
-	char id;
-};
-sc_login myClientInfo;
-int ret;
 LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 {
 	PAINTSTRUCT ps;
@@ -160,24 +219,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 	case WM_CREATE:
 		CreateObstacles(); // 장애물 생성 함수
 		SetTimer(hWnd, 1, 16, NULL); // 현재 업데이트되는 프레임 수에 따라 객체 움직임 속도가 달라짐
-
-		ret = recv(CLIENT, (char*)&myClientInfo, sizeof(sc_login), 0);
-		ClientID = myClientInfo.id;
-		p->SetID((int)ClientID);
-
-		if (ClientID == 1) {
-			//색깔 지정
-		}
-		else if (ClientID == 2) {
-
-		}
-		else if (ClientID == 3) {
-
-		}
-		sc_InitPos posSet;
-		ret = recv(CLIENT, (char*)&posSet, sizeof(sc_InitPos), 0);
-		p->SetPosX(posSet.x);
-		p->SetPosY(posSet.y);
 
 		break;
 	case WM_PAINT:
@@ -221,7 +262,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 		}
 		else if (wParam == 'D' && p->GetHeat() < 10)
 		{
-			bullets.emplace_back(new bullet(p->GetPosX() + p->GetFDirX() * 25, p->GetPosY() + p->GetFDirY() * 25, p->GetFDirX(), p->GetFDirY()));
+			bullets.emplace_back(new bullet(p->GetID(), p->GetPosX() + p->GetFDirX() * 25, p->GetPosY() + p->GetFDirY() * 25, p->GetFDirX(), p->GetFDirY()));
 			p->SetHeat(p->GetHeat() + 1);
 			p->SetHeatCount(3.0);
 		}
@@ -343,35 +384,25 @@ void DrawAllObjects(HDC hdc)
 
 void CreateItem()
 {
-	bool collide = true;
-	while (collide) {
+	bool collide = false;
+	while (!collide) {
 		item* newitem = new item;
 		for (auto& obstacle : obstacles) { // 먼저 장애물과 충돌 검사
 			if (obstacle->CheckCollision(newitem)) {
-				collide = true;
-				break;
-			}
-			else
-				collide = false;
-		}
-
-		if (!collide) { // 장애물과 충돌했으면 여기는 건너뛰기
-			for (auto& item : items) {
-				if (item->CheckCollision(newitem)) {
-					collide = true;
-					break;
-				}
-				else
-					collide = false;
+				delete newitem;
+				return;
 			}
 		}
 
-		if (!collide) { // 모든 객체와 충돌하지 않았어야 추가
-			items.emplace_back(newitem);
-			break;
+		for (auto& item : items) {
+			if (item->CheckCollision(newitem)) {
+				delete newitem;
+				return;
+			}
 		}
-		else
-			delete newitem;
+
+		collide = true;
+		items.emplace_back(newitem);
 	}
 }
 
@@ -414,7 +445,7 @@ void GameUpdate()
 		}
 	}
 
-	// 총알 벽과 충돌 체크
+	// 총알-벽 충돌 체크
 	for (auto it = bullets.begin(); it != bullets.end();) {
 		(*it)->update();
 		if (((*it)->GetDirX() + (*it)->GetDirY()) == 0)

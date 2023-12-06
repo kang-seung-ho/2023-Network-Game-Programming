@@ -10,3 +10,6 @@
 #define OBSTACLE_SIZE 30
 
 #define CREATE_ITEM_TIME 3.0
+
+#define WINDOW_WIDTH 800
+#define WINDOW_HEIGHT 1000

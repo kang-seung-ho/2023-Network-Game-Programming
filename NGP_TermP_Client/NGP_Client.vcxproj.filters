@@ -68,5 +68,8 @@
     <ClInclude Include="ui.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="Protocol.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
