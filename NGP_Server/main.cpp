@@ -26,7 +26,7 @@ void send_start_game_packet(SOCKET* client_socket, int client_id);
 void send_move_packet(SOCKET* client_socket, int client_id);
 void process_client(int client_id, char* p);
 
-void send_Init_Pos(SOCKET* client_socket, char client_id);
+void send_Init_Pos(SOCKET* client_socket);
 
 int main(int argc, char* argv[])
 {
@@ -119,16 +119,16 @@ DWORD WINAPI clientThread(LPVOID arg)
 	buf = player->m_buf;
 	len = BUFSIZE;
 
-	send_login_ok_packet(&client_sock, id);//id부여
-	send_Init_Pos(&client_sock, id);//초기위치부여
-	while (true) {
-		if (thread_count == 3) {
-			gameStart();
-			break;
-		}
-	}
+	//send_login_ok_packet(&client_sock, id);//id부여
+	send_Init_Pos(&client_sock);//초기위치부여
+	//while (true) {
+	//	if (thread_count == 3) {
+	//		gameStart();
+	//		break;
+	//	}
+	//}
 	
-	for (auto& cl : clients) {
+	/*for (auto& cl : clients) {
 		if (cl.second.m_id == id) continue;
 		send_other_info_packet(&cl.second.c_socket, cl.second.m_id, id);
 		send_other_info_packet(&client_sock, id, cl.second.m_id);
@@ -136,7 +136,7 @@ DWORD WINAPI clientThread(LPVOID arg)
 
 	while (start_game == false) {
 		std::this_thread::sleep_for(std::chrono::milliseconds(30));
-	};
+	};*/
 
 	// 클라이언트와 데이터 통신
 	while (1) {
@@ -188,24 +188,24 @@ void gameStart()
 	start_game = true;
 }
 
-void send_Init_Pos(SOCKET* client_socket, char client_id)
+void send_Init_Pos(SOCKET* client_socket)
 {
 	sc_InitPos packet;
 	packet.size = sizeof(packet);
 	packet.type = SC_P_INIT;
-	if (client_id == 1) {
+	if (thread_count == 1) {
 		clients[1].pos_y = 100;
 		clients[1].pos_x = 200;
 		packet.y = 100;
 		packet.x = 200;
 	}
-	else if (client_id == 2) {
+	else if (thread_count == 2) {
 		clients[2].pos_y = 600;
 		clients[2].pos_x = 600;
 		packet.y = 600;
 		packet.x = 600;
 	}
-	else if (client_id == 3) {
+	else if (thread_count == 3) {
 		clients[3].pos_y = 100;
 		clients[3].pos_x = 700;
 		packet.y = 100;

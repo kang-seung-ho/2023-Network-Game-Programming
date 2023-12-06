@@ -105,8 +105,8 @@ DWORD WINAPI ClientMain(LPVOID arg)
 			char packet_type = *(c + 1); // 그 다음 바이트는 패킷 타입
 			if (packet_size <= 0) break;
 			switch (packet_type) {
-			case SC_P_LOGIN: {
-				sc_InitPos* packet = reinterpret_cast<sc_InitPos*>(c);
+			case SC_P_INIT: {
+				sc_InitPos* packet = (sc_InitPos*)(c);
 				p->SetID(packet->id);
 				p->SetPosX(packet->x);
 				p->SetPosY(packet->y);
@@ -156,7 +156,7 @@ DWORD WINAPI ClientMain(LPVOID arg)
 				// 나의 id면 hp유아이에서 체력 한칸을 없애주자
 				break;
 			}
-						 c = c + packet_size;
+				c = c + packet_size;
 			}
 
 		}
