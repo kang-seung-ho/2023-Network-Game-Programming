@@ -21,6 +21,7 @@ public:
 	float pos_x, pos_y;
 	float dx, dy;
 	float px, py;
+	int fdir_x, fdir_y;
 	COLORREF color;
 	int power;
 	int heat;

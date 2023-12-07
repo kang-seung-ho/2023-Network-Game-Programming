@@ -18,8 +18,10 @@ const char SC_P_INIT = 10;
 // client -> server
 struct cs_move {
 	char size;
-	char	type;
-	char	direction;			// 0 : up, 1: down, 2:left, 3:right
+	char type;
+	char id;
+	//char	direction;			// 0 : up, 1: down, 2:left, 3:right
+	WPARAM dir;
 };
 
 struct sc_InitPlayer {
@@ -63,6 +65,7 @@ struct sc_move {
 	char type;
 	char id;
 	float pos_x, pos_y;
+	int fdir_x, fdir_y;
 };
 
 struct sc_dead {

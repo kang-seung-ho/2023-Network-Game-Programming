@@ -48,7 +48,6 @@ char ClientID{};
 sc_login myClientInfo;
 int ret;
 
-
 //void sendKEY(SOCKET client_sock, char key)
 //{
 //	cs_move a;
@@ -62,7 +61,7 @@ SOCKET client_sock;
 DWORD WINAPI ClientMain(LPVOID arg)
 {
 	int retval;
-	char buffer[BUFFERSIZE];
+	//char buffer[BUFFERSIZE];
 	char recv_buf[48];
 
 	// 家南 积己
@@ -115,8 +114,6 @@ DWORD WINAPI ClientMain(LPVOID arg)
 				players.emplace_back(temp);
 
 				remainingTime = 120;
-				//my_id = packet->id;
-				//std::cout << my_id << std::endl;
 				break;
 			}
 			case SC_P_OTHER_INFO: {
@@ -135,7 +132,16 @@ DWORD WINAPI ClientMain(LPVOID arg)
 			}
 
 			case SC_P_MOVE: {
-				sc_move* packet = reinterpret_cast<sc_move*> (buf);
+				sc_move* packet = (sc_move*)buf;
+				for (auto& player : players) {
+					if (player->GetID() == packet->id) {
+						player->SetPosX(packet->pos_x);
+						player->SetPosY(packet->pos_y);
+						player->SetFDirX(packet->fdir_x);
+						player->SetFDirY(packet->fdir_y);
+					}
+				}
+				
 				// 累诀
 				break;
 			}
@@ -220,6 +226,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 	HDC	hdc, mdc, mapdc;
 	static HBITMAP hBitmap, map;
 
+	cs_move* m = new cs_move;
+
 	switch (iMessage) {
 	case WM_CREATE:
 		CreateObstacles(); // 厘局拱 积己 窃荐
@@ -255,20 +263,38 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 		else if (wParam == VK_UP) {
 			p->SetDirX(0);
 			p->SetDirY(-1);
+
+			m->dir = wParam;
+			m->id = p->GetID();
+			send(client_sock, (char*)m, sizeof(cs_move), 0);
 		}
 		else if (wParam == VK_LEFT) {
 			p->SetDirX(-1);
 			p->SetDirY(0);
+
+			m->dir = wParam;
+			m->id = p->GetID();
+			send(client_sock, (char*)m, sizeof(cs_move), 0);
 		}
 		else if (wParam == VK_DOWN) {
 			p->SetDirX(0);
 			p->SetDirY(1);
+
+			m->dir = wParam;
+			m->id = p->GetID();
+			send(client_sock, (char*)m, sizeof(cs_move), 0);
 		}
 		else if (wParam == VK_RIGHT) {
 			p->SetDirX(1);
 			p->SetDirY(0);
+
+			m->dir = wParam;
+			m->id = p->GetID();
+			send(client_sock, (char*)m, sizeof(cs_move), 0);
 		}
-		else if (wParam == 'D' && p->GetHeat() < 10)
+
+		
+		if (wParam == 'D' && p->GetHeat() < 10)
 		{
 			bullets.emplace_back(new bullet(p->GetID(), p->GetPosX() + p->GetFDirX() * 25, p->GetPosY() + p->GetFDirY() * 25, p->GetFDirX(), p->GetFDirY()));
 			p->SetHeat(p->GetHeat() + 1);

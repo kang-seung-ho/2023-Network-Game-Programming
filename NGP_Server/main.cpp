@@ -24,7 +24,7 @@ void send_login_ok_packet(SOCKET* client_socket, char client_id);
 void send_other_info_packet(SOCKET* client_socket, int client_id, int other_id);
 void send_start_game_packet(SOCKET* client_socket, int client_id);
 void send_move_packet(SOCKET* client_socket, int client_id);
-void process_client(int client_id, char* p);
+void recv_key_packet(int client_id, char* p);
 
 void send_Init_Pos(SOCKET* client_socket);
 
@@ -61,7 +61,8 @@ int main(int argc, char* argv[])
 
 	// 이벤트 사용 준비
 
-	hSendEvent = CreateEvent(NULL, FALSE, TRUE, NULL);		// 콘솔창에 쓰는것은 비신호로 시작
+	//hSendEvent = CreateEvent(NULL, FALSE, TRUE, NULL);		// 콘솔창에 쓰는것은 비신호로 시작
+	hSendEvent = CreateEvent(NULL, FALSE, FALSE, NULL); // auto reset Event
 	if (hSendEvent == NULL) return 1;
 	hCalculateEvent = CreateEvent(NULL, FALSE, TRUE, NULL);		// 콘솔창에 쓰는것은 비신호로 시작
 	if (hCalculateEvent == NULL) return 1;
@@ -83,11 +84,11 @@ int main(int argc, char* argv[])
 		thread_count++;
 	}
 
-	// 3명이 접속 완료
+	//// 3명이 접속 완료
 	HANDLE hSend;
 	hThread = CreateThread(NULL, 0, sendPacket, NULL, 0, NULL);
 	if (hThread == NULL) { std::cout << "쓰레드 생성 에러" << std::endl; }
-	SetEvent(hCalculateEvent);
+	SetEvent(hSendEvent);
 		//반복문, 클라이언트가 모두 죽었는가?? 한명 남았는가ㅣ?
 		//반복문인 트루면
 
@@ -122,15 +123,10 @@ DWORD WINAPI clientThread(LPVOID arg)
 	//send_login_ok_packet(&client_sock, id);//id부여
 	
 	while (true) {
-		int sentInitcheck{};
 		if (thread_count == 3) {
 			send_Init_Pos(&client_sock);//모든 클라가 연결되면 모든 클라위치 부여 및 전송
-			sentInitcheck = 1;
-			//gameStart();
-		}
-		if (thread_count == 3 && sentInitcheck == 1) {
-			send_start_game_packet(&client_sock, id);
 			break;
+			//gameStart();
 		}
 	}
 	
@@ -149,12 +145,13 @@ DWORD WINAPI clientThread(LPVOID arg)
 		retval = recv(client_sock, buf, len, 0);
 		if (retval == SOCKET_ERROR) {
 			std::cout << id << "강제 연결 끊김" << std::endl;
-			for (auto& cl : clients) {
-				if (cl.second.m_id == id) continue;
-				//send_dead_packet(&cl.second.c_socket, id);
-			}
+			//for (auto& cl : clients) {
+			//	if (cl.second.m_id == id) continue;
+			//	//send_dead_packet(&cl.second.c_socket, id);
+			//}
 		}
-		process_client(id, buf);
+		recv_key_packet(id, buf);
+		SetEvent(hSendEvent);
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 		if (clients[id].act == false) break;
 	}
@@ -168,31 +165,32 @@ DWORD WINAPI clientThread(LPVOID arg)
 
 DWORD WINAPI sendPacket(LPVOID arg) {
 	while (1) {
-		WaitForSingleObject(hCalculateEvent, INFINITE);
+		WaitForSingleObject(hSendEvent, INFINITE);
 		for (auto& pl : clients) {
-			for (int i = 1; i <= 3; ++i)
+			for (int i = 1; i <= 3; ++i) {
 				send_move_packet(&pl.second.c_socket, i);
-
+			}
+				
+			std::cout << pl.second.m_id << "에게 정보 전송" << std::endl;
 			// bullet
 		}
-		SetEvent(hSendEvent);
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
 	}
 }
 
-void gameStart()
-{
-	std::cout << "게임시작" << std::endl;
-	//이때 시간을 초기화 하여 보낸다.
-
-
-	for (auto& cl : clients) {
-		send_start_game_packet(&cl.second.c_socket, cl.second.m_id);
-		cl.second.update(0.001f);
-	}
-	start_game = true;
-}
+//void gameStart()
+//{
+//	std::cout << "게임시작" << std::endl;
+//	//이때 시간을 초기화 하여 보낸다.
+//
+//
+//	for (auto& cl : clients) {
+//		send_start_game_packet(&cl.second.c_socket, cl.second.m_id);
+//		cl.second.update(0.001f);
+//	}
+//	start_game = true;
+//}
 
 void send_Init_Pos(SOCKET* client_socket)
 {
@@ -268,49 +266,59 @@ void send_move_packet(SOCKET* client_socket, int client_id)
 	packet.type = SC_P_MOVE;
 	packet.pos_x = clients[client_id].pos_x;
 	packet.pos_y = clients[client_id].pos_y;
+	packet.fdir_x = clients[client_id].fdir_x;
+	packet.fdir_y = clients[client_id].fdir_y;
 	packet.id = client_id;
 	send(*client_socket, reinterpret_cast<const char*>(&packet), packet.size, 0);
 }
 
-void process_client(int client_id, char* p)
+void recv_key_packet(int client_id, char* p)
 {
 	unsigned char packet_type = p[1];
 	Player& cl = clients[client_id];
-	switch (packet_type)
+
+	cs_move* packet = (cs_move*)(p);
+
+	switch (packet->dir)
 	{
-	case CS_P_MOVE: {
-		cs_move* packet = reinterpret_cast<cs_move*>(p);
+	case VK_UP:
+		cl.pos_y -= cl.speed;
+		cl.fdir_x = 0;
+		cl.fdir_y = -1;
+		std::cout << client_id << "위로 이동" << std::endl;
 
-		switch (packet->direction)
-		{
-		case 0:
+		break;
+	case VK_DOWN:
+		cl.pos_y += cl.speed;
+		cl.fdir_x = 0;
+		cl.fdir_y = 1;
+		std::cout << client_id << "아래로 이동" << std::endl;
 
-			cl.dy -= cl.speed * cl.power;
-			break;
-		case 1:
-			cl.dy += cl.speed * cl.power;
+		break;
+	case VK_LEFT:
+		cl.pos_x -= cl.speed;
+		cl.fdir_x = -1;
+		cl.fdir_y = 0;
+		std::cout << client_id << "왼쪽으로 이동" << std::endl;
 
-			break;
-		case 2:
-			cl.dx -= cl.speed * cl.power;
+		break;
+	case VK_RIGHT:
+		cl.pos_x += cl.speed;
+		cl.fdir_x = 1;
+		cl.fdir_y = 0;
+		std::cout << client_id << "오른쪽으로 이동" << std::endl;
 
-			break;
-		case 3:
-			cl.dx += cl.speed * cl.power;
+		break;
+	default:
+		std::cout << "잘못된값이 왔습니다 종료합니다 " << client_id << std::endl;
 
-			break;
-		default:
-			std::cout << "잘못된값이 왔습니다 종료합니다 " << client_id << std::endl;
-
-			exit(-1);
-
-		}
-
+		exit(-1);
 		cl.update(0.001f);
 
 		break;
+	
 	}
-	}
+	
 }
 
 void err_display(const char* msg)

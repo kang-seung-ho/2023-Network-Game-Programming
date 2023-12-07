@@ -32,7 +32,7 @@ void Player::update(bool collide)
 	pos_x += dx;
 	pos_y += dy;
 
-	//이동량 초기화
+	//이동량 초기화->키 1번당 1번만 이동해야 하므로 dir 초기화
 	dx = 0;
 	dy = 0;
 }
