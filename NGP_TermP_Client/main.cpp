@@ -157,6 +157,7 @@ DWORD WINAPI ClientMain(LPVOID arg)
 				newitem->SetPosX(packet->x);
 				newitem->SetPosY(packet->y);
 				newitem->itemType = packet->item_type;
+				newitem->setItemImage(newitem->itemType);
 				items.emplace_back(newitem);
 				break;
 			}

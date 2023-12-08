@@ -14,4 +14,5 @@ public:
 	~item() {};
 
 	void draw(HDC hdc);
+	void setItemImage(int itemType);
 };

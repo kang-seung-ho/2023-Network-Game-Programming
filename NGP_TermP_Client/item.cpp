@@ -10,6 +10,23 @@ std::uniform_int_distribution<int> uidPos(200, 1000);
 item::item() : gameObject(x, y, ITEM_SIZE)
 {
 	
+	
+
+}
+
+void item::draw(HDC hdc)
+{
+	HDC memDC = CreateCompatibleDC(hdc);
+	HBITMAP oldBitmap = (HBITMAP)SelectObject(memDC, hBitmap);
+
+	BitBlt(hdc, x, y, ITEM_SIZE, ITEM_SIZE, memDC, 0, 0, SRCCOPY);
+
+	SelectObject(memDC, oldBitmap);
+	DeleteDC(memDC);
+}
+
+void item::setItemImage(int itemType)
+{
 	switch (itemType)
 	{
 	case POWERUP_ITEM:
@@ -30,16 +47,4 @@ item::item() : gameObject(x, y, ITEM_SIZE)
 	default:
 		break;
 	}
-
-}
-
-void item::draw(HDC hdc)
-{
-	HDC memDC = CreateCompatibleDC(hdc);
-	HBITMAP oldBitmap = (HBITMAP)SelectObject(memDC, hBitmap);
-
-	BitBlt(hdc, x, y, ITEM_SIZE, ITEM_SIZE, memDC, 0, 0, SRCCOPY);
-
-	SelectObject(memDC, oldBitmap);
-	DeleteDC(memDC);
 }
