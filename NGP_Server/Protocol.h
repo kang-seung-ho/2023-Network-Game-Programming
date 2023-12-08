@@ -1,4 +1,6 @@
+#define CREATE_ITEM_TIME 3.0
 const short SERVERPORT = 9000;
+
 
 //client -> server
 const char CS_P_MOVE = 1;

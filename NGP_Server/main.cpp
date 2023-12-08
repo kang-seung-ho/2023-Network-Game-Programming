@@ -1,5 +1,6 @@
 #include "header.h"
 #include "player.h"
+#include <random>
 //#include "bullet.h"
 //#include "item.h"
 
@@ -19,7 +20,7 @@ DWORD WINAPI	sendPacket(LPVOID arg);
 void err_display(const char* msg);
 void err_quit(const char* msg);
 
-void gameStart();
+//void gameStart();
 void send_login_ok_packet(SOCKET* client_socket, char client_id);
 void send_other_info_packet(SOCKET* client_socket, int client_id, int other_id);
 void send_start_game_packet(SOCKET* client_socket, int client_id);
@@ -28,8 +29,131 @@ void recv_key_packet(int client_id, char* p);
 
 void send_Init_Pos(SOCKET* client_socket);
 
+#include "obstacle.h"
+#include "item.h"
+#define OBSTACLE_SIZE 30
+std::vector<obstacle*> obstacles;
+#include "frametime.h"
+double frame_time = 0.0;
+double item_time = 0.0;
+
+std::random_device rd;
+std::default_random_engine dre(rd());
+std::uniform_int_distribution<int> uidType(1, 5);
+
+std::vector<item*> items;
+item* CreateItem()
+{
+	bool collide = false;
+	while (!collide) {
+		item* newitem = new item;
+		for (auto& obstacle : obstacles) { // 먼저 장애물과 충돌 검사
+			if (obstacle->CheckCollision(newitem)) {
+				delete newitem;
+				return;
+			}
+		}
+
+		for (auto& item : items) {
+			if (item->CheckCollision(newitem)) {
+				delete newitem;
+				return;
+			}
+		}
+
+		collide = true;
+		items.emplace_back(newitem);
+		return newitem;
+	}
+}
+int ItemCnt{};
+DWORD WINAPI CreateItem(LPVOID arg) {
+	while (true) {
+		frame_time = GetFrameTime();
+		item_time += frame_time;
+		if (item_time > CREATE_ITEM_TIME) {
+			item* NEW = CreateItem();
+			int newItemX = NEW->GetPosX();
+			int newItemY = NEW->GetPosY();
+			int newItemType = NEW->getItemType();
+			//패킷 보내기
+			sc_item createdItem{};
+			createdItem.size = sizeof(sc_item);
+			createdItem.type = SC_P_ITEM;
+			createdItem.x = newItemX;
+			createdItem.y = newItemY;
+			createdItem.item_type = newItemType;
+			createdItem.id = ItemCnt++;
+
+			for (int x = 0; x < 3; ++x) {
+				int retval = send(clients[x].c_socket, (char*)&createdItem, sizeof(sc_item), 0);
+			}			
+			item_time -= CREATE_ITEM_TIME;
+		}
+
+	}
+}
+
+void CreateObstacles()
+{
+	// 좌측 상단
+	for (int i = 0; i < 5; i++)
+	{
+		obstacle* wall = new obstacle(300 + i * OBSTACLE_SIZE, 300);
+		obstacles.emplace_back(wall);
+	}
+
+	for (int i = 1; i < 5; i++)
+	{
+		obstacle* wall = new obstacle(300, 300 + i * OBSTACLE_SIZE);
+		obstacles.emplace_back(wall);
+	}
+
+	// 우측 상단
+	for (int i = 0; i < 5; i++)
+	{
+		obstacle* wall = new obstacle(900 - i * OBSTACLE_SIZE, 300);
+		obstacles.emplace_back(wall);
+	}
+
+	for (int i = 1; i < 5; i++)
+	{
+		obstacle* wall = new obstacle(900, 300 + i * OBSTACLE_SIZE);
+		obstacles.emplace_back(wall);
+	}
+
+	// 좌측 하단
+	for (int i = 0; i < 5; i++)
+	{
+		obstacle* wall = new obstacle(300 + i * OBSTACLE_SIZE, 900);
+		obstacles.emplace_back(wall);
+	}
+
+	for (int i = 1; i < 5; i++)
+	{
+		obstacle* wall = new obstacle(300, 900 - i * OBSTACLE_SIZE);
+		obstacles.emplace_back(wall);
+	}
+
+	// 우측 하단
+	for (int i = 0; i < 5; i++)
+	{
+		obstacle* wall = new obstacle(900 - i * OBSTACLE_SIZE, 900);
+		obstacles.emplace_back(wall);
+	}
+
+	for (int i = 1; i < 5; i++)
+	{
+		obstacle* wall = new obstacle(900, 900 - i * OBSTACLE_SIZE);
+		obstacles.emplace_back(wall);
+	}
+
+}
+
 int main(int argc, char* argv[])
 {
+
+	CreateObstacles();
 	int retval;		// 오류 검출 변수
 
 	// 윈속 초기화
@@ -88,6 +212,9 @@ int main(int argc, char* argv[])
 	HANDLE hSend;
 	hThread = CreateThread(NULL, 0, sendPacket, NULL, 0, NULL);
 	if (hThread == NULL) { std::cout << "쓰레드 생성 에러" << std::endl; }
+	HANDLE ITEM = CreateThread(NULL, 0, CreateItem, NULL, 0, NULL);
+	if (hThread == NULL) { std::cout << "쓰레드 생성 에러" << std::endl; }
+
 	SetEvent(hSendEvent);
 		//반복문, 클라이언트가 모두 죽었는가?? 한명 남았는가ㅣ?
 		//반복문인 트루면
@@ -141,7 +268,7 @@ DWORD WINAPI clientThread(LPVOID arg)
 	};*/
 
 	// 클라이언트와 데이터 통신
-	while (1) {
+	while (true) {
 		retval = recv(client_sock, buf, len, 0);
 		if (retval == SOCKET_ERROR) {
 			std::cout << id << "강제 연결 끊김" << std::endl;
@@ -164,7 +291,7 @@ DWORD WINAPI clientThread(LPVOID arg)
 }
 
 DWORD WINAPI sendPacket(LPVOID arg) {
-	while (1) {
+	while (true) {
 		WaitForSingleObject(hSendEvent, INFINITE);
 		for (auto& pl : clients) {
 			for (int i = 1; i <= 3; ++i) {
@@ -174,7 +301,7 @@ DWORD WINAPI sendPacket(LPVOID arg) {
 			std::cout << pl.second.m_id << "에게 정보 전송" << std::endl;
 			// bullet
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		//std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
 	}
 }

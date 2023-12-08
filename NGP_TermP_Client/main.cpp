@@ -219,7 +219,7 @@ int  WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 	}
 	return Message.wParam;
 }
-
+int timecnt{};
 LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 {
 	PAINTSTRUCT ps;
@@ -334,6 +334,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 
 		if (remainingTime < 0) {
 			MessageBox(hWnd, L"시간이 다 되었습니다!", L"게임 오버", MB_OK);
+			timecnt = 1;
+			if (timecnt == 1) {
+				exit(0);
+			}
 			PostQuitMessage(0);
 		}
 
@@ -421,6 +425,7 @@ void CreateItem()
 	bool collide = false;
 	while (!collide) {
 		item* newitem = new item;
+		//newitem->SetPosX(100);
 		for (auto& obstacle : obstacles) { // 먼저 장애물과 충돌 검사
 			if (obstacle->CheckCollision(newitem)) {
 				delete newitem;
