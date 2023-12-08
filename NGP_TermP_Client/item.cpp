@@ -9,11 +9,7 @@ std::uniform_int_distribution<int> uidPos(200, 1000);
 
 item::item() : gameObject(x, y, ITEM_SIZE)
 {
-	x = uidPos(dre);
-	y = uidPos(dre);
-	itemType = uidType(dre);
-	hBitmap = NULL;
-
+	
 	switch (itemType)
 	{
 	case POWERUP_ITEM:

@@ -1,6 +1,8 @@
 #include "header.h"
 #include "player.h"
-#include <random>
+#include "obstacle.h"
+#include "item.h"
+#include "frametime.h"
 //#include "bullet.h"
 //#include "item.h"
 
@@ -29,17 +31,12 @@ void recv_key_packet(int client_id, char* p);
 
 void send_Init_Pos(SOCKET* client_socket);
 
-#include "obstacle.h"
-#include "item.h"
+
 #define OBSTACLE_SIZE 30
 std::vector<obstacle*> obstacles;
-#include "frametime.h"
 double frame_time = 0.0;
 double item_time = 0.0;
 
-std::random_device rd;
-std::default_random_engine dre(rd());
-std::uniform_int_distribution<int> uidType(1, 5);
 
 std::vector<item*> items;
 item* CreateItem()
@@ -50,14 +47,14 @@ item* CreateItem()
 		for (auto& obstacle : obstacles) { // 먼저 장애물과 충돌 검사
 			if (obstacle->CheckCollision(newitem)) {
 				delete newitem;
-				return;
+				break;
 			}
 		}
 
 		for (auto& item : items) {
 			if (item->CheckCollision(newitem)) {
 				delete newitem;
-				return;
+				break;
 			}
 		}
 
@@ -67,7 +64,7 @@ item* CreateItem()
 	}
 }
 int ItemCnt{};
-DWORD WINAPI CreateItem(LPVOID arg) {
+DWORD WINAPI CreateItemThread(LPVOID arg) {
 	while (true) {
 		frame_time = GetFrameTime();
 		item_time += frame_time;
@@ -84,7 +81,7 @@ DWORD WINAPI CreateItem(LPVOID arg) {
 			createdItem.y = newItemY;
 			createdItem.item_type = newItemType;
 			createdItem.id = ItemCnt++;
-
+			std::cout << createdItem.item_type << ' ' << createdItem.x << ' ' << createdItem.y << ' ' << std::endl;
 			for (int x = 0; x < 3; ++x) {
 				int retval = send(clients[x].c_socket, (char*)&createdItem, sizeof(sc_item), 0);
 			}			
@@ -212,7 +209,7 @@ int main(int argc, char* argv[])
 	HANDLE hSend;
 	hThread = CreateThread(NULL, 0, sendPacket, NULL, 0, NULL);
 	if (hThread == NULL) { std::cout << "쓰레드 생성 에러" << std::endl; }
-	HANDLE ITEM = CreateThread(NULL, 0, CreateItem, NULL, 0, NULL);
+	HANDLE ITEM = CreateThread(NULL, 0, CreateItemThread, NULL, 0, NULL);
 	if (hThread == NULL) { std::cout << "쓰레드 생성 에러" << std::endl; }
 
 	SetEvent(hSendEvent);

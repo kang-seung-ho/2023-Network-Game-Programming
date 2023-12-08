@@ -131,11 +131,19 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="frametime.cpp" />
+    <ClCompile Include="gameObject.cpp" />
+    <ClCompile Include="item.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="obstacle.cpp" />
     <ClCompile Include="Player.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="frametime.h" />
+    <ClInclude Include="gameObject.h" />
     <ClInclude Include="Header.h" />
+    <ClInclude Include="item.h" />
+    <ClInclude Include="obstacle.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="Protocol.h" />
   </ItemGroup>

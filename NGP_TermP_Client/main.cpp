@@ -152,7 +152,12 @@ DWORD WINAPI ClientMain(LPVOID arg)
 				break;
 			}
 			case SC_P_ITEM: {
-
+				sc_item* packet = (sc_item*)(buf);
+				item* newitem = new item;
+				newitem->SetPosX(packet->x);
+				newitem->SetPosY(packet->y);
+				newitem->itemType = packet->item_type;
+				items.emplace_back(newitem);
 				break;
 			}
 			case SC_P_BULLET: {
@@ -324,11 +329,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 	case WM_TIMER:
 		frame_time = GetFrameTime();
 		remainingTime -= frame_time;
-		item_time += frame_time;
-		if (item_time > CREATE_ITEM_TIME) {
-			CreateItem();
-			item_time -= CREATE_ITEM_TIME;
-		}
+		
 
 		GameUpdate(); // 게임 상태 업데이트
 

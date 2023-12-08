@@ -1,4 +1,3 @@
-#include "frametime.h"
 #include "item.h"
 
 std::random_device rd;
