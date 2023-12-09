@@ -44,9 +44,11 @@ std::vector<obstacle*> obstacles;
 static TCHAR text[100];
 int GameOverCnt{};
 
-char ClientID{};
+char clientID;
 sc_login myClientInfo;
 int ret;
+
+CRITICAL_SECTION cs;
 
 //void sendKEY(SOCKET client_sock, char key)
 //{
@@ -106,7 +108,7 @@ DWORD WINAPI ClientMain(LPVOID arg)
 			switch (packet_type) {
 			case SC_P_INIT: {
 				player* temp = new player(0, 0);
-				sc_InitPlayer* packet = (sc_InitPlayer*)(buf);
+				sc_InitPlayer* packet = (sc_InitPlayer*)buf;
 				temp->SetID(packet->id);
 				temp->SetPosX(packet->x);
 				temp->SetPosY(packet->y);
@@ -116,11 +118,9 @@ DWORD WINAPI ClientMain(LPVOID arg)
 				remainingTime = 120;
 				break;
 			}
-			case SC_P_OTHER_INFO: {
-				sc_move* packet = reinterpret_cast<sc_move*>(buf);
-				// 다른 클라이언트를 그려주는 객체에 id부여
-				// 다른 클라이언트 객체.id = packet->id;
-				packet->id;
+			case SC_P_LOGIN: {
+				sc_login* packet = (sc_login*)buf;
+				clientID = packet->id;
 				
 				break;
 			}
@@ -162,10 +162,31 @@ DWORD WINAPI ClientMain(LPVOID arg)
 				break;
 			}
 			case SC_P_BULLET: {
-				sc_bullet* packet = reinterpret_cast<sc_bullet*>(buf);
-				//int b_id = packet->id;
-				// ~
-				break;
+				//EnterCriticalSection(&cs);
+				sc_bullet* packet = (sc_bullet*)buf;
+				bool newBullet = true;
+				for (auto& bullet : bullets) {
+					if (bullet->b_id == packet->b_id) { // 이미 존재하던 총알이면 값만 업데이트
+						bullet->SetPosX(packet->x);
+						bullet->SetPosY(packet->y);
+						newBullet = false;
+						break;
+					}
+				}
+				if (newBullet) { // 새로 발사한 총알이면 벡터에 추가
+					bullet* b = new bullet(packet->id, packet->b_id, packet->x, packet->y);
+					bullets.emplace_back(b);
+				}
+
+				// 서버랑 같은 로직 적용해서 필요 없는 총알은 그냥 클라에서 판단해서 삭제
+				for (auto it = bullets.begin(); it != bullets.end();) {
+					(*it)->update();
+					if (((*it)->GetDirX() + (*it)->GetDirY()) == 0)
+						it = bullets.erase(it);
+					else
+						++it;
+				}
+				//LeaveCriticalSection(&cs);
 			}
 			case SC_P_HIT: {
 				sc_hit* packet = reinterpret_cast<sc_hit*> (buf);
@@ -174,7 +195,7 @@ DWORD WINAPI ClientMain(LPVOID arg)
 				// 나의 id면 hp유아이에서 체력 한칸을 없애주자
 				break;
 			}
-			buf = buf + packet_size;
+			//buf = buf + packet_size;
 
 		}
 
@@ -186,6 +207,7 @@ DWORD WINAPI ClientMain(LPVOID arg)
 //int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdParam, int nCmdShow)
 int  WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_  LPSTR lpszCmdParam, _In_  int nCmdShow)
 {
+	InitializeCriticalSection(&cs);
 	// 윈속 초기화
 	WSADATA wsa;
 	if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
@@ -223,6 +245,8 @@ int  WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 		TranslateMessage(&Message);
 		DispatchMessage(&Message);
 	}
+
+	DeleteCriticalSection(&cs);
 	return Message.wParam;
 }
 int timecnt{};
@@ -249,7 +273,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 		SelectObject(mdc, hBitmap);
 		SelectObject(mapdc, map);
 
+		//EnterCriticalSection(&cs);
 		DrawAllObjects(mapdc);
+		//LeaveCriticalSection(&cs);
 		StretchBlt(mdc, 0, 0, 800, 800, mapdc, 0, 0, 1200, 1200, SRCCOPY);
 		for (auto& player : players) {
 			UI->DrawUI(mdc, player, remainingTime, player->GetID());
@@ -267,65 +293,46 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 		if (wParam == VK_ESCAPE)
 			PostQuitMessage(0);
 		else if (wParam == VK_UP) {
-			p->SetDirX(0);
-			p->SetDirY(-1);
 
 			m->dir = wParam;
-			m->id = p->GetID();
+			m->id = clientID;
+			m->type = CS_P_MOVE;
 			send(client_sock, (char*)m, sizeof(cs_move), 0);
 		}
 		else if (wParam == VK_LEFT) {
-			p->SetDirX(-1);
-			p->SetDirY(0);
 
 			m->dir = wParam;
-			m->id = p->GetID();
+			m->id = clientID;
+			m->type = CS_P_MOVE;
 			send(client_sock, (char*)m, sizeof(cs_move), 0);
 		}
 		else if (wParam == VK_DOWN) {
-			p->SetDirX(0);
-			p->SetDirY(1);
 
 			m->dir = wParam;
-			m->id = p->GetID();
+			m->id = clientID;
+			m->type = CS_P_MOVE;
 			send(client_sock, (char*)m, sizeof(cs_move), 0);
 		}
 		else if (wParam == VK_RIGHT) {
-			p->SetDirX(1);
-			p->SetDirY(0);
 
 			m->dir = wParam;
-			m->id = p->GetID();
+			m->id = clientID;
+			m->type = CS_P_MOVE;
 			send(client_sock, (char*)m, sizeof(cs_move), 0);
 		}
 
 		
-		if (wParam == 'D' && p->GetHeat() < 10)
+		if (wParam == 'D')
 		{
-			bullets.emplace_back(new bullet(p->GetID(), p->GetPosX() + p->GetFDirX() * 25, p->GetPosY() + p->GetFDirY() * 25, p->GetFDirX(), p->GetFDirY()));
-			p->SetHeat(p->GetHeat() + 1);
-			p->SetHeatCount(3.0);
+			m->dir = wParam;
+			m->id = clientID;
+			m->type = CS_P_ATTACK;
+			send(client_sock, (char*)m, sizeof(cs_move), 0);
+			//bullets.emplace_back(new bullet(p->GetID(), p->GetPosX() + p->GetFDirX() * 25, p->GetPosY() + p->GetFDirY() * 25, p->GetFDirX(), p->GetFDirY()));
 		}
 		break;
 	case WM_KEYUP:
-		if (wParam == VK_UP && p->GetDirY() == -1) {
-			p->SetDirX(0);
-			p->SetDirY(0);
-		}
-
-		else if (wParam == VK_LEFT && p->GetDirX() == -1) {
-			p->SetDirX(0);
-			p->SetDirY(0);
-		}
-
-		else if (wParam == VK_DOWN && p->GetDirY() == 1) {
-			p->SetDirX(0);
-			p->SetDirY(0);
-		}
-		else if (wParam == VK_RIGHT && p->GetDirX() == 1) {
-			p->SetDirX(0);
-			p->SetDirY(0);
-		}
+		
 		break;
 	case WM_TIMER:
 		frame_time = GetFrameTime();
@@ -416,35 +423,10 @@ void DrawAllObjects(HDC hdc)
 		player->Draw(hdc);
 	for (auto& obstacle : obstacles)
 		obstacle->draw(hdc);
-	for (auto& b : bullets)
-		b->draw(hdc);
+	for (auto& bullet : bullets)
+		bullet->draw(hdc);
 	for (auto& item : items)
 		item->draw(hdc);
-}
-
-void CreateItem()
-{
-	bool collide = false;
-	while (!collide) {
-		item* newitem = new item;
-		//newitem->SetPosX(100);
-		for (auto& obstacle : obstacles) { // 먼저 장애물과 충돌 검사
-			if (obstacle->CheckCollision(newitem)) {
-				delete newitem;
-				return;
-			}
-		}
-
-		for (auto& item : items) {
-			if (item->CheckCollision(newitem)) {
-				delete newitem;
-				return;
-			}
-		}
-
-		collide = true;
-		items.emplace_back(newitem);
-	}
 }
 
 void GameUpdate()

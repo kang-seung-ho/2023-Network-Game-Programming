@@ -89,6 +89,7 @@ struct sc_bullet {
 	char size;
 	char type;
 	char id;
+	int b_id;
 	float x;
 	float y;
 };

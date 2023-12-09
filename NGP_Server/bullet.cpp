@@ -3,7 +3,9 @@
 
 
 void bullet::update() {
-	if (x < 0 || y < 0 || x > 1200 || y > 1200) {
+	x += dx * 10;
+	y += dy * 10;
+	if (x < -20 || y < -20 || x > 1200 || y > 1200) {
 		SetDirX(0);
 		SetDirY(0);
 	}

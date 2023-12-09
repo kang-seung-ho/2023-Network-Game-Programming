@@ -33,6 +33,9 @@
     <ClCompile Include="item.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="bullet.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Header.h">
@@ -54,6 +57,9 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="item.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="bullet.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

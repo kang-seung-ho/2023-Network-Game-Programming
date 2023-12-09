@@ -76,6 +76,12 @@ struct sc_dead {
 	char id;
 };
 
+struct sc_player {
+	char size;
+	char type;
+	char id;
+};
+
 struct sc_item {
 	char size;
 	char type;
@@ -89,6 +95,7 @@ struct sc_bullet {
 	char size;
 	char type;
 	char id;
+	int b_id;
 	float x;
 	float y;
 };
