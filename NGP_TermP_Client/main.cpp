@@ -45,21 +45,10 @@ static TCHAR text[100];
 int GameOverCnt{};
 
 char clientID;
-sc_login myClientInfo;
-int ret;
 
 CRITICAL_SECTION cs;
-
-//void sendKEY(SOCKET client_sock, char key)
-//{
-//	cs_move a;
-//	a.size = sizeof(cs_move);
-//	a.type = KEY;
-//	int retval = send(client_sock, (char*)&a, sizeof(cs_move), 0);
-//	if (client_sock == INVALID_SOCKET) err_quit("send()");
-//}
-
 SOCKET client_sock;
+
 DWORD WINAPI ClientMain(LPVOID arg)
 {
 	int retval;
@@ -78,24 +67,6 @@ DWORD WINAPI ClientMain(LPVOID arg)
 	serveraddr.sin_port = htons(SERVERPORT);
 	retval = connect(client_sock, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
 	if (retval == SOCKET_ERROR) err_quit("connect()");
-
-	//retval = recv(client_sock, (char*)&myClientInfo, sizeof(sc_login), 0);
-	//ClientID = myClientInfo.id;
-	//p->SetID((int)ClientID);
-
-	////if (ClientID == 1) {
-	////	//색깔 지정
-	////}
-	////else if (ClientID == 2) {
-
-	////}
-	////else if (ClientID == 3) {
-
-	////}
-	//sc_InitPos posSet;
-	//retval = recv(client_sock, (char*)&posSet, sizeof(sc_InitPos), 0);
-	//p->SetPosX(posSet.x);
-	//p->SetPosY(posSet.y);
 
 	while (true) {
 		retval = recv(client_sock, recv_buf, sizeof(recv_buf), 0);
@@ -147,8 +118,15 @@ DWORD WINAPI ClientMain(LPVOID arg)
 			}
 
 			case SC_P_DEAD: {
-				sc_dead* packet = reinterpret_cast<sc_dead*>(buf);
-				// 해당 id에 해당하는 id지워주기
+				sc_dead* packet = (sc_dead*)buf;
+				for (auto it = players.begin(); it != players.end();) {
+					if ((*it)->GetID() == clientID) {
+						it = players.erase(it);
+						break;
+					}
+					else
+						++it;
+				}
 				break;
 			}
 			case SC_P_ITEM: {
@@ -215,7 +193,6 @@ int  WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 
 	// 소켓 통신 스레드 생성
 	CreateThread(NULL, 0, ClientMain, NULL, 0, NULL);
-
 
 	HWND hWnd;
 	MSG Message;
@@ -328,7 +305,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 			m->id = clientID;
 			m->type = CS_P_ATTACK;
 			send(client_sock, (char*)m, sizeof(cs_move), 0);
-			//bullets.emplace_back(new bullet(p->GetID(), p->GetPosX() + p->GetFDirX() * 25, p->GetPosY() + p->GetFDirY() * 25, p->GetFDirX(), p->GetFDirY()));
 		}
 		break;
 	case WM_KEYUP:
