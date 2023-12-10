@@ -214,7 +214,7 @@ void CreateObstacles()
 int main(int argc, char* argv[])
 {
 	InitializeCriticalSection(&cs);
-	CreateObstacles();
+
 	int retval;		// 오류 검출 변수
 
 	// 윈속 초기화
@@ -335,6 +335,21 @@ DWORD WINAPI clientThread(LPVOID arg)
 }
 
 DWORD WINAPI sendPacket(LPVOID arg) {
+	CreateObstacles();
+	sc_obstacle* packet = new sc_obstacle;
+	for (auto& client : clients) {
+		int test = 0;
+		for (auto& obstacle : obstacles) {
+			packet->type = SC_P_OBSTACLE;
+			packet->x = obstacle->GetPosX();
+			packet->y = obstacle->GetPosY();
+			send(client.second.c_socket, (char*)packet, sizeof(sc_obstacle), 0);
+			// 슬립이 없으면 제대로 안그려짐
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+			std::cout << client.second.m_id << "에게 " << test++ << "번 쨰의 벽 정보 전송" << std::endl;
+		}
+	}
+
 	for (auto& client : clients) {
 		send_Init_Pos(&client.second.c_socket);
 		std::cout << client.second.m_id << "에게 초기 정보 전송" << std::endl;

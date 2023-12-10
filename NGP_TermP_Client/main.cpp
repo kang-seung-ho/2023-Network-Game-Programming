@@ -20,10 +20,8 @@ LPCTSTR lpszClass = L"Window Class Name";
 LPCTSTR lpszWindowName = L"Simple Shooting Game";
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam);
-void CreateObstacles();
 void DrawAllObjects(HDC hdc);
 void GameUpdate();
-void CreateItem();
 
 double frame_time = 0.0;
 double item_time = 0.0;
@@ -167,6 +165,13 @@ DWORD WINAPI ClientMain(LPVOID arg)
 			}
 			//LeaveCriticalSection(&cs);
 		}
+		case SC_P_OBSTACLE: {
+			sc_obstacle* packet = (sc_obstacle*)buf;
+			obstacle* temp = new obstacle(packet->x, packet->y);
+			obstacles.emplace_back(temp);
+			break;
+		}
+
 		case SC_P_HIT: {
 			sc_hit* packet = reinterpret_cast<sc_hit*> (buf);
 			//int p_id = packet->id;
@@ -243,7 +248,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 
 	switch (iMessage) {
 	case WM_CREATE:
-		CreateObstacles(); // 장애물 생성 함수
 		SetTimer(hWnd, 1, 16, NULL); // 현재 업데이트되는 프레임 수에 따라 객체 움직임 속도가 달라짐
 
 		break;
@@ -340,62 +344,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 		return 0;
 	}
 	return (DefWindowProc(hWnd, iMessage, wParam, lParam));
-}
-
-void CreateObstacles()
-{
-	// 좌측 상단
-	for (int i = 0; i < 5; i++)
-	{
-		obstacle* wall = new obstacle(300 + i * OBSTACLE_SIZE, 300);
-		obstacles.emplace_back(wall);
-	}
-
-	for (int i = 1; i < 5; i++)
-	{
-		obstacle* wall = new obstacle(300, 300 + i * OBSTACLE_SIZE);
-		obstacles.emplace_back(wall);
-	}
-
-	// 우측 상단
-	for (int i = 0; i < 5; i++)
-	{
-		obstacle* wall = new obstacle(900 - i * OBSTACLE_SIZE, 300);
-		obstacles.emplace_back(wall);
-	}
-
-	for (int i = 1; i < 5; i++)
-	{
-		obstacle* wall = new obstacle(900, 300 + i * OBSTACLE_SIZE);
-		obstacles.emplace_back(wall);
-	}
-
-	// 좌측 하단
-	for (int i = 0; i < 5; i++)
-	{
-		obstacle* wall = new obstacle(300 + i * OBSTACLE_SIZE, 900);
-		obstacles.emplace_back(wall);
-	}
-
-	for (int i = 1; i < 5; i++)
-	{
-		obstacle* wall = new obstacle(300, 900 - i * OBSTACLE_SIZE);
-		obstacles.emplace_back(wall);
-	}
-
-	// 우측 하단
-	for (int i = 0; i < 5; i++)
-	{
-		obstacle* wall = new obstacle(900 - i * OBSTACLE_SIZE, 900);
-		obstacles.emplace_back(wall);
-	}
-
-	for (int i = 1; i < 5; i++)
-	{
-		obstacle* wall = new obstacle(900, 900 - i * OBSTACLE_SIZE);
-		obstacles.emplace_back(wall);
-	}
-
 }
 
 void DrawAllObjects(HDC hdc)

@@ -11,6 +11,7 @@ const char SC_P_GAME_START = 3;
 const char SC_P_DEAD = 4;
 const char SC_P_MOVE = 5;
 const char SC_P_ITEM = 6;
+const char SC_P_OBSTACLE = 7;
 const char SC_P_BULLET = 8;
 const char SC_P_HIT = 9;
 const char SC_P_INIT = 10;
@@ -93,6 +94,13 @@ struct sc_bullet {
 	int b_id;
 	float x;
 	float y;
+};
+
+struct sc_obstacle {
+	char size;
+	char type;
+	int x;
+	int y;
 };
 
 struct sc_hit {
