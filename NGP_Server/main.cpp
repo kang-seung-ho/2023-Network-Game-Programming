@@ -263,7 +263,7 @@ int main(int argc, char* argv[])
 	HANDLE ITEM = CreateThread(NULL, 0, TimerThread, NULL, 0, NULL);
 	if (hThread == NULL) { std::cout << "쓰레드 생성 에러" << std::endl; }
 
-	//SetEvent(hSendEvent);
+	SetEvent(hSendEvent);
 		//반복문, 클라이언트가 모두 죽었는가?? 한명 남았는가ㅣ?
 		//반복문인 트루면
 
@@ -295,8 +295,26 @@ DWORD WINAPI clientThread(LPVOID arg)
 	std::cout << player->m_id << std::endl;
 	buf = player->m_buf;
 	len = BUFSIZE;
-	
+
 	send_login_ok_packet(&client_sock, id);//id부여
+	
+	while (true) {
+		if (thread_count == 3) {
+			send_Init_Pos(&client_sock);//모든 클라가 연결되면 모든 클라위치 부여 및 전송
+			break;
+			//gameStart();
+		}
+	}
+	
+	/*for (auto& cl : clients) {
+		if (cl.second.m_id == id) continue;
+		send_other_info_packet(&cl.second.c_socket, cl.second.m_id, id);
+		send_other_info_packet(&client_sock, id, cl.second.m_id);
+	}
+
+	while (start_game == false) {
+		std::this_thread::sleep_for(std::chrono::milliseconds(30));
+	};*/
 
 	// 클라이언트와 데이터 통신
 	while (true) {
@@ -322,11 +340,6 @@ DWORD WINAPI clientThread(LPVOID arg)
 }
 
 DWORD WINAPI sendPacket(LPVOID arg) {
-	for (auto& client : clients) {
-		send_Init_Pos(&client.second.c_socket);
-		std::cout << client.second.m_id << "에게 초기 정보 전송" << std::endl;
-	}
-
 	while (true) {
 		WaitForSingleObject(hSendEvent, INFINITE);
 		for (auto& client : clients) {
@@ -370,7 +383,6 @@ void send_Init_Pos(SOCKET* client_socket)
 	packet.x = 100;
 	packet.color = RGB(255, 0, 0);
 	send(*client_socket, (char*)(&packet), sizeof(packet), 0);
-	std::cout << clients[1].m_id << "의 초기 정보 전송" << std::endl;
 
 	clients[2].pos_y = 1100;
 	clients[2].pos_x = 100;
@@ -381,7 +393,6 @@ void send_Init_Pos(SOCKET* client_socket)
 	packet.x = 100;
 	packet.color = RGB(0, 255, 0);
 	send(*client_socket, (char*)(&packet), sizeof(packet), 0);
-	std::cout << clients[2].m_id << "의 초기 정보 전송" << std::endl;
 
 	clients[3].pos_y = 100;
 	clients[3].pos_x = 1100;
@@ -392,7 +403,8 @@ void send_Init_Pos(SOCKET* client_socket)
 	packet.x = 1100;
 	packet.color = RGB(0, 0, 255);
 	send(*client_socket, (char*)(&packet), sizeof(packet), 0);
-	std::cout << clients[3].m_id << "의 초기 정보 전송" << std::endl;
+
+	//send(*client_socket, (char*)(&packet), sizeof(packet), 0);
 }
 
 
@@ -403,7 +415,7 @@ void send_login_ok_packet(SOCKET* client_socket, char client_id)
 	packet.size = sizeof(packet);
 	packet.type = SC_P_LOGIN;
 	packet.id = client_id;
-	send(*client_socket, (char*)&packet, sizeof(packet), 0);
+	send(*client_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
 }
 
 void send_other_info_packet(SOCKET* client_socket, int client_id, int other_id)
