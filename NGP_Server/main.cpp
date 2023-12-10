@@ -40,8 +40,7 @@ CRITICAL_SECTION cs;
 
 #define OBSTACLE_SIZE 30
 std::vector<obstacle*> obstacles;
-//std::vector<item*> items;
-//std::unordered_map<int, item> items;
+
 std::vector<bullet*> bullets;
 
 std::unordered_map<int, item*> items; // item 포인터를 저장하는 unordered_map
@@ -137,18 +136,19 @@ DWORD WINAPI TimerThread(LPVOID arg) {
 		}
 	}
 }
-std::vector<int> keysToDelete; //없앨 아이템 id를 클라에 다 보내준 뒤 vector안의 내용을 지운다.
+std::vector<std::pair<int, item*>> keysToDelete; //없앨 아이템 id를 클라에 다 보내준 뒤 vector안의 내용을 지운다.
 bool CheckPlayerItemCollision(Player& player) {
 
 	for (const auto& pair : items) {
 		if (player.CheckCollision(pair.second)) {
-			keysToDelete.push_back(pair.first);
+			keysToDelete.push_back(std::make_pair(pair.first, pair.second));
 		}
 	}
 
-	for (int key : keysToDelete) {
+	for (const auto& keyPair : keysToDelete) {
+		int key = keyPair.first; // 키 추출
 		items.erase(key); // 키를 사용하여 아이템 삭제
-		std::cout << key;
+		std::cout << key << std::endl;
 	}
 
 	return !keysToDelete.empty(); // 충돌이 하나라도 있었다면 true 반환
@@ -335,20 +335,20 @@ DWORD WINAPI clientThread(LPVOID arg)
 }
 
 DWORD WINAPI sendPacket(LPVOID arg) {
-	CreateObstacles();
-	sc_obstacle* packet = new sc_obstacle;
-	for (auto& client : clients) {
-		int test = 0;
-		for (auto& obstacle : obstacles) {
-			packet->type = SC_P_OBSTACLE;
-			packet->x = obstacle->GetPosX();
-			packet->y = obstacle->GetPosY();
-			send(client.second.c_socket, (char*)packet, sizeof(sc_obstacle), 0);
-			// 슬립이 없으면 제대로 안그려짐
-			std::this_thread::sleep_for(std::chrono::milliseconds(1));
-			std::cout << client.second.m_id << "에게 " << test++ << "번 쨰의 벽 정보 전송" << std::endl;
-		}
-	}
+	//CreateObstacles();
+	//sc_obstacle* packet = new sc_obstacle;
+	//for (auto& client : clients) {
+	//	int test = 0;
+	//	for (auto& obstacle : obstacles) {
+	//		packet->type = SC_P_OBSTACLE;
+	//		packet->x = obstacle->GetPosX();
+	//		packet->y = obstacle->GetPosY();
+	//		send(client.second.c_socket, (char*)packet, sizeof(sc_obstacle), 0);
+	//		// 슬립이 없으면 제대로 안그려짐
+	//		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	//		std::cout << client.second.m_id << "에게 " << test++ << "번 쨰의 벽 정보 전송" << std::endl;
+	//	}
+	//}
 
 	for (auto& client : clients) {
 		send_Init_Pos(&client.second.c_socket);
@@ -530,19 +530,63 @@ void recv_move_packet(int client_id, char* p)
 		
 		if (CheckPlayerItemCollision(cl)) {
 			EnterCriticalSection(&cs);
-			std::cout << keysToDelete[0] << ": 충돌 발생" << std::endl;
+			sc_itemApply sendItemEffect{};
+			if (!keysToDelete.empty()) {
+				std::cout << keysToDelete[0].first << ": 충돌 발생" << std::endl;
+				int collidedItemType = keysToDelete[0].second->itemType;
+
+				sendItemEffect.size = sizeof(sc_itemApply);
+				sendItemEffect.type = SC_P_itemApply;
+				sendItemEffect.clientID = cl.m_id;
+				sendItemEffect.itemType = collidedItemType;
+				if (collidedItemType == 1) {
+					cl.power += 1;
+					std::cout << "파워:" << cl.power << std::endl;
+				}
+				else if (collidedItemType == 2) {
+					cl.speed += 0.5;
+					std::cout << "스피드: " << cl.speed << std::endl;
+				}
+				else if (collidedItemType == 3) {
+					cl.hp += 30;
+					if (cl.hp >= 100) cl.hp = 100;
+					sendItemEffect.hp = cl.hp;
+					std::cout << "HP: " << cl.hp << std::endl;
+				}
+				else if (collidedItemType == 4) {
+					cl.heat = 0;
+					sendItemEffect.heat = 0;
+					std::cout << "HEAT: " << cl.heat << std::endl;
+				}
+				else if (collidedItemType == 5) {
+					cl.score += 5;
+					sendItemEffect.coin = cl.score;
+					std::cout << "점수: " << cl.score << std::endl;
+				}
+			}
+			
 			//아이템과 플레이어 충돌체크
 			sc_Itemhit nowHitItem{};
 			nowHitItem.size = sizeof(sc_Itemhit);
 			nowHitItem.type = SC_P_ITEM_HIT;
+			
+
 			if (!keysToDelete.empty()) {
-				nowHitItem.ItemID = keysToDelete[0];
+				nowHitItem.ItemID = keysToDelete[0].first;
 			}
 
 			//모든 클라한테 업데이트
 			for (auto& c : clients) {
-				int ret = send(c.second.c_socket, (char*)(&nowHitItem), sizeof(sc_Itemhit), 0);
+				int ret = send(c.second.c_socket, (char*)(&nowHitItem), sizeof(sc_itemApply), 0);
 			}
+			
+
+
+			//아이템 적용내용 클라이언트에 전송
+			for (auto& c : clients) {
+				int ret = send(c.second.c_socket, (char*)(&sendItemEffect), sizeof(sc_Itemhit), 0);
+			}
+			
 			keysToDelete.clear(); //충돌한 아이템 리스트 삭제
 			LeaveCriticalSection(&cs);
 		}

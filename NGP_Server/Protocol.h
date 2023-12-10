@@ -19,6 +19,7 @@ const char SC_P_BULLET = 8;
 const char SC_P_HIT = 9;
 const char SC_P_INIT = 10;
 const char SC_P_ITEM_HIT = 11;
+const char SC_P_itemApply = 12;
 
 // client -> server
 struct cs_move {
@@ -121,4 +122,14 @@ struct sc_Itemhit {
 	char size;
 	char type;
 	char ItemID;
+};
+
+struct sc_itemApply {
+	char size;
+	char type;
+	char clientID;
+	char itemType;
+	char coin;
+	char hp;
+	char heat;
 };

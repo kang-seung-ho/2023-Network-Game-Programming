@@ -183,7 +183,34 @@ DWORD WINAPI ClientMain(LPVOID arg)
 			sc_Itemhit* packet = (sc_Itemhit*)(buf);
 			int itemidrecv = packet->ItemID;
 			items.erase(itemidrecv); //수신한 id에 해당하는 아이템 지우기
-
+		}
+		case SC_P_itemApply: {
+			sc_itemApply* packet = (sc_itemApply*)(buf);
+			int playerid = packet->clientID;
+			int itemtype = packet->itemType;
+			if (itemtype == 3) {
+				//해당 플레이어의 정보에 적용
+				for (int x = 0; x < players.size(); ++x) {
+					if (players[x]->GetID() == playerid) {
+						players[x]->SetHP(packet->hp);
+					}
+				}
+				
+			}
+			else if (itemtype == 4) {
+				for (int x = 0; x < players.size(); ++x) {
+					if (players[x]->GetID() == playerid) {
+						players[x]->SetHeat(packet->heat);
+					}
+				}
+			}
+			else if (itemtype == 5) {
+				for (int x = 0; x < players.size(); ++x) {
+					if (players[x]->GetID() == playerid) {
+						players[x]->SetScore(packet->coin);
+					}
+				}
+			}
 		}
 		//buf = buf + packet_size;
 		}
@@ -237,6 +264,63 @@ int  WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 	DeleteCriticalSection(&cs);
 	return Message.wParam;
 }
+
+void CreateObstacles()
+{
+	// 좌측 상단
+	for (int i = 0; i < 5; i++)
+	{
+		obstacle* wall = new obstacle(300 + i * OBSTACLE_SIZE, 300);
+		obstacles.emplace_back(wall);
+	}
+
+	for (int i = 1; i < 5; i++)
+	{
+		obstacle* wall = new obstacle(300, 300 + i * OBSTACLE_SIZE);
+		obstacles.emplace_back(wall);
+	}
+
+	// 우측 상단
+	for (int i = 0; i < 5; i++)
+	{
+		obstacle* wall = new obstacle(900 - i * OBSTACLE_SIZE, 300);
+		obstacles.emplace_back(wall);
+	}
+
+	for (int i = 1; i < 5; i++)
+	{
+		obstacle* wall = new obstacle(900, 300 + i * OBSTACLE_SIZE);
+		obstacles.emplace_back(wall);
+	}
+
+	// 좌측 하단
+	for (int i = 0; i < 5; i++)
+	{
+		obstacle* wall = new obstacle(300 + i * OBSTACLE_SIZE, 900);
+		obstacles.emplace_back(wall);
+	}
+
+	for (int i = 1; i < 5; i++)
+	{
+		obstacle* wall = new obstacle(300, 900 - i * OBSTACLE_SIZE);
+		obstacles.emplace_back(wall);
+	}
+
+	// 우측 하단
+	for (int i = 0; i < 5; i++)
+	{
+		obstacle* wall = new obstacle(900 - i * OBSTACLE_SIZE, 900);
+		obstacles.emplace_back(wall);
+	}
+
+	for (int i = 1; i < 5; i++)
+	{
+		obstacle* wall = new obstacle(900, 900 - i * OBSTACLE_SIZE);
+		obstacles.emplace_back(wall);
+	}
+
+}
+
 int timecnt{};
 LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 {
@@ -249,7 +333,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
 	switch (iMessage) {
 	case WM_CREATE:
 		SetTimer(hWnd, 1, 16, NULL); // 현재 업데이트되는 프레임 수에 따라 객체 움직임 속도가 달라짐
-
+		CreateObstacles();
 		break;
 	case WM_PAINT:
 		hdc = BeginPaint(hWnd, &ps);
