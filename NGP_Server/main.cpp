@@ -4,6 +4,7 @@
 #include "item.h"
 #include "bullet.h"
 #include "frametime.h"
+#include "gameObject.h"
 //#include "bullet.h"
 //#include "item.h"
 
@@ -39,34 +40,50 @@ CRITICAL_SECTION cs;
 
 #define OBSTACLE_SIZE 30
 std::vector<obstacle*> obstacles;
-std::vector<item*> items;
+//std::vector<item*> items;
+//std::unordered_map<int, item> items;
 std::vector<bullet*> bullets;
-item* CreateItem()
-{
-	bool collide = false;
-	while (!collide) {
+
+std::unordered_map<int, item*> items; // item 포인터를 저장하는 unordered_map
+
+item* CreateItem(int id) {
+	bool collicheck{};
+	while (true) {
+		collicheck = false;
 		item* newitem = new item;
-		for (auto& obstacle : obstacles) { // 먼저 장애물과 충돌 검사
+		
+		// 장애물과의 충돌 검사
+		for (auto& obstacle : obstacles) {
 			if (obstacle->CheckCollision(newitem)) {
 				delete newitem;
+				collicheck = true;
 				break;
+				//return nullptr;
 			}
 		}
+		if (collicheck == 1)continue;
 
-		for (auto& item : items) {
-			if (item->CheckCollision(newitem)) {
+		// 기존 아이템과의 충돌 검사
+		for (auto& pair : items) {
+			if (pair.second->CheckCollision(newitem)) {
 				delete newitem;
+				collicheck = true;
 				break;
+				//return nullptr;
 			}
 		}
+		if (collicheck == true)continue;
 
-		collide = true;
-		items.emplace_back(newitem);
+		//int newid = newitem->getItemID(); // item 객체에서 고유 ID 가져오기
+
+		items[id] = newitem; // 고유 ID를 key로 사용하여 아이템 추가
 		return newitem;
 	}
 }
-int ItemCnt{};
+
+
 DWORD WINAPI TimerThread(LPVOID arg) {
+	int itemCNT{};
 	double item_time = 0.0;
 	double bullet_update_time = 0.0;
 	while (true) {
@@ -74,8 +91,9 @@ DWORD WINAPI TimerThread(LPVOID arg) {
 		bullet_update_time += frame_time;
 		item_time += frame_time;
 		if (item_time > CREATE_ITEM_TIME) {
-			item* NEW = CreateItem();
-
+			item* NEW = CreateItem(itemCNT);
+			NEW->setItemID(itemCNT);
+			itemCNT++;
 			//패킷 보내기
 			sc_item createdItem{};
 			createdItem.size = sizeof(sc_item);
@@ -83,7 +101,8 @@ DWORD WINAPI TimerThread(LPVOID arg) {
 			createdItem.x = NEW->GetPosX();
 			createdItem.y = NEW->GetPosY();
 			createdItem.item_type = NEW->getItemType();
-			createdItem.id = ItemCnt++;
+			createdItem.id = NEW->getItemID();
+			//std::cout << NEW->getItemID() << std::endl;
 			//std::cout << createdItem.item_type << ' ' << createdItem.x << ' ' << createdItem.y << ' ' << std::endl;
 			for (int x = 0; x < 3; ++x) {
 				int retval = send(clients[x].c_socket, (char*)&createdItem, sizeof(sc_item), 0);
@@ -118,6 +137,23 @@ DWORD WINAPI TimerThread(LPVOID arg) {
 		}
 	}
 }
+std::vector<int> keysToDelete; //없앨 아이템 id를 클라에 다 보내준 뒤 vector안의 내용을 지운다.
+bool CheckPlayerItemCollision(Player& player) {
+
+	for (const auto& pair : items) {
+		if (player.CheckCollision(pair.second)) {
+			keysToDelete.push_back(pair.first);
+		}
+	}
+
+	for (int key : keysToDelete) {
+		items.erase(key); // 키를 사용하여 아이템 삭제
+		std::cout << key;
+	}
+
+	return !keysToDelete.empty(); // 충돌이 하나라도 있었다면 true 반환
+}
+
 
 void CreateObstacles()
 {
@@ -240,7 +276,7 @@ int main(int argc, char* argv[])
 	HANDLE ITEM = CreateThread(NULL, 0, TimerThread, NULL, 0, NULL);
 	if (hThread == NULL) { std::cout << "쓰레드 생성 에러" << std::endl; }
 
-	SetEvent(hSendEvent);
+	//SetEvent(hSendEvent);
 		//반복문, 클라이언트가 모두 죽었는가?? 한명 남았는가ㅣ?
 		//반복문인 트루면
 
@@ -272,26 +308,8 @@ DWORD WINAPI clientThread(LPVOID arg)
 	std::cout << player->m_id << std::endl;
 	buf = player->m_buf;
 	len = BUFSIZE;
-
+	
 	send_login_ok_packet(&client_sock, id);//id부여
-	
-	while (true) {
-		if (thread_count == 3) {
-			send_Init_Pos(&client_sock);//모든 클라가 연결되면 모든 클라위치 부여 및 전송
-			break;
-			//gameStart();
-		}
-	}
-	
-	/*for (auto& cl : clients) {
-		if (cl.second.m_id == id) continue;
-		send_other_info_packet(&cl.second.c_socket, cl.second.m_id, id);
-		send_other_info_packet(&client_sock, id, cl.second.m_id);
-	}
-
-	while (start_game == false) {
-		std::this_thread::sleep_for(std::chrono::milliseconds(30));
-	};*/
 
 	// 클라이언트와 데이터 통신
 	while (true) {
@@ -317,6 +335,11 @@ DWORD WINAPI clientThread(LPVOID arg)
 }
 
 DWORD WINAPI sendPacket(LPVOID arg) {
+	for (auto& client : clients) {
+		send_Init_Pos(&client.second.c_socket);
+		std::cout << client.second.m_id << "에게 초기 정보 전송" << std::endl;
+	}
+
 	while (true) {
 		WaitForSingleObject(hSendEvent, INFINITE);
 		for (auto& client : clients) {
@@ -351,8 +374,10 @@ void send_Init_Pos(SOCKET* client_socket)
 	packet.size = sizeof(packet);
 	packet.type = SC_P_INIT;
 
-	clients[1].pos_y = 100;
-	clients[1].pos_x = 100;
+	clients[1].SetPosY(100);
+	clients[1].SetPosX(100);
+	/*clients[1].pos_y = 100;
+	clients[1].pos_x = 100;*/
 	clients[1].m_id = 1;
 
 	packet.id = 1;
@@ -360,9 +385,13 @@ void send_Init_Pos(SOCKET* client_socket)
 	packet.x = 100;
 	packet.color = RGB(255, 0, 0);
 	send(*client_socket, (char*)(&packet), sizeof(packet), 0);
+	std::cout << clients[1].m_id << "의 초기 정보 전송" << std::endl;
 
-	clients[2].pos_y = 1100;
-	clients[2].pos_x = 100;
+
+	clients[2].SetPosY(1100);
+	clients[2].SetPosX(100);
+	/*clients[2].pos_y = 1100;
+	clients[2].pos_x = 100;*/
 	clients[2].m_id = 2;
 	
 	packet.id = 2;
@@ -370,9 +399,12 @@ void send_Init_Pos(SOCKET* client_socket)
 	packet.x = 100;
 	packet.color = RGB(0, 255, 0);
 	send(*client_socket, (char*)(&packet), sizeof(packet), 0);
+	std::cout << clients[2].m_id << "의 초기 정보 전송" << std::endl;
 
-	clients[3].pos_y = 100;
-	clients[3].pos_x = 1100;
+	clients[3].SetPosY(100);
+	clients[3].SetPosX(1100);
+	/*clients[3].pos_y = 100;
+	clients[3].pos_x = 1100;*/
 	clients[3].m_id = 3;
 
 	packet.id = 3;
@@ -380,8 +412,7 @@ void send_Init_Pos(SOCKET* client_socket)
 	packet.x = 1100;
 	packet.color = RGB(0, 0, 255);
 	send(*client_socket, (char*)(&packet), sizeof(packet), 0);
-
-	//send(*client_socket, (char*)(&packet), sizeof(packet), 0);
+	std::cout << clients[3].m_id << "의 초기 정보 전송" << std::endl;
 }
 
 
@@ -392,7 +423,7 @@ void send_login_ok_packet(SOCKET* client_socket, char client_id)
 	packet.size = sizeof(packet);
 	packet.type = SC_P_LOGIN;
 	packet.id = client_id;
-	send(*client_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
+	send(*client_socket, (char*)&packet, sizeof(packet), 0);
 }
 
 void send_other_info_packet(SOCKET* client_socket, int client_id, int other_id)
@@ -417,8 +448,8 @@ void send_move_packet(SOCKET* client_socket, int client_id)
 	sc_move packet;
 	packet.size = sizeof(packet);
 	packet.type = SC_P_MOVE;
-	packet.pos_x = clients[client_id].pos_x;
-	packet.pos_y = clients[client_id].pos_y;
+	packet.pos_x = clients[client_id].GetPosX();
+	packet.pos_y = clients[client_id].GetPosY();
 	packet.fdir_x = clients[client_id].fdir_x;
 	packet.fdir_y = clients[client_id].fdir_y;
 	packet.id = client_id;
@@ -429,37 +460,44 @@ void recv_move_packet(int client_id, char* p)
 {
 	unsigned char packet_type = p[1];
 	Player& cl = clients[client_id];
-
 	cs_move* packet = (cs_move*)(p);
 	if (packet->type == CS_P_MOVE) {
 		switch (packet->dir)
 		{
 		case VK_UP:
-			cl.pos_y -= cl.speed;
+			cl.SetPosY(cl.GetPosY() - cl.speed);
+			
+			//cl.pos_y -= cl.speed;
 			cl.fdir_x = 0;
 			cl.fdir_y = -1;
-			std::cout << client_id << "위로 이동" << std::endl;
+			//std::cout << client_id << "위로 이동" << std::endl;
+			//clients[client_id].SetPosY(cl.GetPosY());
 
 			break;
 		case VK_DOWN:
-			cl.pos_y += cl.speed;
+			cl.SetPosY(cl.GetPosY() + cl.speed);
+			//cl.pos_y += cl.speed;
 			cl.fdir_x = 0;
 			cl.fdir_y = 1;
-			std::cout << client_id << "아래로 이동" << std::endl;
+			//std::cout << client_id << "아래로 이동" << std::endl;
+			//clients[client_id].SetPosY(cl.GetPosY());
 
 			break;
 		case VK_LEFT:
-			cl.pos_x -= cl.speed;
+			cl.SetPosX(cl.GetPosX() - cl.speed);
+			//cl.pos_x -= cl.speed;
 			cl.fdir_x = -1;
 			cl.fdir_y = 0;
-			std::cout << client_id << "왼쪽으로 이동" << std::endl;
+			//std::cout << client_id << "왼쪽으로 이동" << std::endl;
+			//clients[client_id].SetPosX(cl.GetPosY());
 
 			break;
 		case VK_RIGHT:
-			cl.pos_x += cl.speed;
+			cl.SetPosX(cl.GetPosX() + cl.speed);
+			//cl.pos_x += cl.speed;
 			cl.fdir_x = 1;
 			cl.fdir_y = 0;
-			std::cout << client_id << "오른쪽으로 이동" << std::endl;
+			//std::cout << client_id << "오른쪽으로 이동" << std::endl;
 
 			break;
 		default:
@@ -471,14 +509,37 @@ void recv_move_packet(int client_id, char* p)
 			break;
 
 		}
-	}
-	
+		
+			
+
+		
+		if (CheckPlayerItemCollision(cl)) {
+			EnterCriticalSection(&cs);
+			std::cout << keysToDelete[0] << ": 충돌 발생" << std::endl;
+			//아이템과 플레이어 충돌체크
+			sc_Itemhit nowHitItem{};
+			nowHitItem.size = sizeof(sc_Itemhit);
+			nowHitItem.type = SC_P_ITEM_HIT;
+			if (!keysToDelete.empty()) {
+				nowHitItem.ItemID = keysToDelete[0];
+			}
+
+			//모든 클라한테 업데이트
+			for (auto& c : clients) {
+				int ret = send(c.second.c_socket, (char*)(&nowHitItem), sizeof(sc_Itemhit), 0);
+			}
+			keysToDelete.clear(); //충돌한 아이템 리스트 삭제
+			LeaveCriticalSection(&cs);
+		}
+		
+		
+	}	
 	else if (packet_type == CS_P_ATTACK) {
 		EnterCriticalSection(&cs);
 		for (auto& client : clients) {
 			if (client_id == client.second.m_id && client.second.heat < 10) {
-				bullets.emplace_back(new bullet(client.second.m_id, ++b_id, client.second.pos_x, 
-					client.second.pos_y ,client.second.fdir_x, client.second.fdir_y));
+				bullets.emplace_back(new bullet(client.second.m_id, ++b_id, client.second.GetPosX(),
+					client.second.GetPosY(), client.second.fdir_x, client.second.fdir_y));
 				client.second.heat++;
 				client.second.heat_count = 0.0;
 			}

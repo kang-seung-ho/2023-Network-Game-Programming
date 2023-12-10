@@ -141,6 +141,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bullet.h" />
+    <ClInclude Include="define.h" />
     <ClInclude Include="frametime.h" />
     <ClInclude Include="gameObject.h" />
     <ClInclude Include="Header.h" />

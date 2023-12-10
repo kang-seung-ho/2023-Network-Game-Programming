@@ -8,6 +8,7 @@ class item : public gameObject
 {
 public:
 	int itemType;
+	int itemID;
 	HBITMAP hBitmap;
 
 	item();
@@ -15,4 +16,5 @@ public:
 
 	void draw(HDC hdc);
 	void setItemImage(int itemType);
+	void setitemID(int id);
 };

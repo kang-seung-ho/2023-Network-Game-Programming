@@ -1,6 +1,7 @@
 #pragma once
 #include <Windows.h>
 #include "gameObject.h"
+#include "define.h"
 
 class bullet : public gameObject
 {
@@ -8,7 +9,7 @@ public:
 	int dx, dy;
 	char id;
 	int b_id;
-	bullet(char id, int b_id, int x, int y, int dx, int dy) : gameObject(x, y), id(id), b_id(b_id), dx(dx), dy(dy) {}
+	bullet(char id, int b_id, int x, int y, int dx, int dy) : gameObject(x, y, BULLET_SIZE), id(id), b_id(b_id), dx(dx), dy(dy) {}
 	~bullet() {};
 
 	int GetDirX() const { return dx; }

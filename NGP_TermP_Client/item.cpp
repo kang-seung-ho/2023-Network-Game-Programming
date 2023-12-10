@@ -48,3 +48,8 @@ void item::setItemImage(int itemType)
 		break;
 	}
 }
+
+void item::setitemID(int id)
+{
+	itemID = id;
+}

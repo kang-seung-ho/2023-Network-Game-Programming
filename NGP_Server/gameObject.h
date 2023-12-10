@@ -6,7 +6,7 @@ protected:
     int objectSize;
 
 public:
-    gameObject(int x, int y) :x(x), y(y) {};
+    gameObject(int x, int y, int objectSize) :x(x), y(y), objectSize(objectSize) {};
     ~gameObject() {};
 
     //getter ÇÔ¼öµé

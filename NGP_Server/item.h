@@ -8,9 +8,13 @@ class item : public gameObject
 {
 public:
 	int itemType;
+	int itemID;
 
 	item();
 	~item() {};
 	int getItemType();
+	int getItemID();
+
+	void setItemID(int id);
 
 };

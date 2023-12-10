@@ -1,6 +1,7 @@
 #define CREATE_ITEM_TIME 3.0
-const short SERVERPORT = 9000;
 
+
+const short SERVERPORT = 9000;
 
 //client -> server
 const char CS_P_MOVE = 1;
@@ -16,6 +17,7 @@ const char SC_P_ITEM = 6;
 const char SC_P_BULLET = 8;
 const char SC_P_HIT = 9;
 const char SC_P_INIT = 10;
+const char SC_P_ITEM_HIT = 11;
 
 // client -> server
 struct cs_move {
@@ -105,4 +107,10 @@ struct sc_hit {
 	char type;
 	char id;
 	char bullet_id;
+};
+
+struct sc_Itemhit {
+	char size;
+	char type;
+	char ItemID;
 };
