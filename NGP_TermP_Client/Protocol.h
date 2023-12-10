@@ -14,7 +14,6 @@ const char SC_P_ITEM = 6;
 const char SC_P_BULLET = 8;
 const char SC_P_HIT = 9;
 const char SC_P_INIT = 10;
-const char SC_P_ITEM_HIT = 11;
 
 //#pragma pack(push, 1)
 
@@ -100,12 +99,6 @@ struct sc_hit {
 	char type;
 	char id;
 	char bullet_id;
-};
-
-struct sc_Itemhit {
-	char size;
-	char type;
-	char ItemID;
 };
 
 //#pragma pack(pop)

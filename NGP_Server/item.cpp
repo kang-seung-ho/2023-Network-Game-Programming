@@ -10,15 +10,10 @@ item::item() : gameObject(x, y)
 	x = uidPos(dre);
 	y = uidPos(dre);
 	itemType = uidType(dre);	
-	itemID = itemcnt++;
+
 }
 
 int item::getItemType()
 {
 	return itemType;
-}
-
-int item::getItemID()
-{
-	return itemID;
 }

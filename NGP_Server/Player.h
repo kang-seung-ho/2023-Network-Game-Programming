@@ -4,9 +4,8 @@
 
 #include <Windows.h>
 #include "header.h"
-#include "gameObject.h"
 
-class Player : public gameObject {
+class Player  {
 public:
 	Player();
 	Player(SOCKET& s, int id);

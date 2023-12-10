@@ -4,7 +4,6 @@
 #include "item.h"
 #include "bullet.h"
 #include "frametime.h"
-#include "gameObject.h"
 //#include "bullet.h"
 //#include "item.h"
 
@@ -40,39 +39,33 @@ CRITICAL_SECTION cs;
 
 #define OBSTACLE_SIZE 30
 std::vector<obstacle*> obstacles;
-//std::vector<item*> items;
-//std::unordered_map<int, item> items;
+std::vector<item*> items;
 std::vector<bullet*> bullets;
-
-std::unordered_map<int, item*> items; // item 포인터를 저장하는 unordered_map
-
-item* CreateItem() {
-	while (true) {
+item* CreateItem()
+{
+	bool collide = false;
+	while (!collide) {
 		item* newitem = new item;
-
-		// 장애물과의 충돌 검사
-		for (auto& obstacle : obstacles) {
+		for (auto& obstacle : obstacles) { // 먼저 장애물과 충돌 검사
 			if (obstacle->CheckCollision(newitem)) {
 				delete newitem;
-				return nullptr;
+				break;
 			}
 		}
 
-		// 기존 아이템과의 충돌 검사
-		for (auto& pair : items) {
-			if (pair.second->CheckCollision(newitem)) { // 여기서 -> 대신 ->* 사용
+		for (auto& item : items) {
+			if (item->CheckCollision(newitem)) {
 				delete newitem;
-				return nullptr;
+				break;
 			}
 		}
 
-		int newid = newitem->getItemID(); // item 객체에서 고유 ID 가져오기
-		items[newid] = newitem; // 고유 ID를 key로 사용하여 아이템 추가
+		collide = true;
+		items.emplace_back(newitem);
 		return newitem;
 	}
 }
-
-
+int ItemCnt{};
 DWORD WINAPI TimerThread(LPVOID arg) {
 	double item_time = 0.0;
 	double bullet_update_time = 0.0;
@@ -90,7 +83,7 @@ DWORD WINAPI TimerThread(LPVOID arg) {
 			createdItem.x = NEW->GetPosX();
 			createdItem.y = NEW->GetPosY();
 			createdItem.item_type = NEW->getItemType();
-			createdItem.id = NEW->getItemID();
+			createdItem.id = ItemCnt++;
 			//std::cout << createdItem.item_type << ' ' << createdItem.x << ' ' << createdItem.y << ' ' << std::endl;
 			for (int x = 0; x < 3; ++x) {
 				int retval = send(clients[x].c_socket, (char*)&createdItem, sizeof(sc_item), 0);
@@ -125,22 +118,6 @@ DWORD WINAPI TimerThread(LPVOID arg) {
 		}
 	}
 }
-std::vector<int> keysToDelete; //없앨 아이템 id를 클라에 다 보내준 뒤 vector안의 내용을 지운다.
-bool CheckPlayerItemCollision(Player& player) {
-
-	for (const auto& pair : items) {
-		if (player.CheckCollision(pair.second)) {
-			keysToDelete.push_back(pair.first);
-		}
-	}
-
-	for (int key : keysToDelete) {
-		items.erase(key); // 키를 사용하여 아이템 삭제
-	}
-
-	return !keysToDelete.empty(); // 충돌이 하나라도 있었다면 true 반환
-}
-
 
 void CreateObstacles()
 {
@@ -494,21 +471,8 @@ void recv_move_packet(int client_id, char* p)
 			break;
 
 		}
-		
-		//아이템과 플레이어 충돌체크
-		sc_Itemhit nowHitItem{};
-		nowHitItem.size = sizeof(sc_Itemhit);
-		nowHitItem.type = SC_P_ITEM_HIT;
-		nowHitItem.ItemID = keysToDelete[0];
-
-		for (auto& client : clients) {
-			// 각 클라별 충돌체크
-			if (CheckPlayerItemCollision(client.second)) {
-				int ret = send(client.second.c_socket, (char*)(&nowHitItem), sizeof(sc_Itemhit), 0);
-			}
-		}
-		
-	}	
+	}
+	
 	else if (packet_type == CS_P_ATTACK) {
 		EnterCriticalSection(&cs);
 		for (auto& client : clients) {
